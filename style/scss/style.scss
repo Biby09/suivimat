@@ -1,11 +1,194 @@
-// Fichier principal de style : personnalise Bootstrap ici.
-
 // 1. Surcharge des variables Bootstrap (AVANT l'import)
-// $primary: #0d6efd;
-// $font-family-sans-serif: "Helvetica Neue", Arial, sans-serif;
-// $border-radius: .5rem;
+/* === COULEURS PRINCIPALES === */
+$primary:   #2036a5;
+$secondary: #290d60;
+$success:   #198754;
+$danger:    #dc4e5e;
+$warning:   #ffc107;
+$info:      #96b8ea;
+$light:     desaturate(lighten($primary, 50%), 10%);
+$dark:      #212529;
+
+/* === PALETTE PERSONNALISÉE === */
+$theme-colors: (
+  "primary":   $primary,
+  "secondary": $secondary,
+  "success":   $success,
+  "danger":    $danger,
+  "warning":   $warning,
+  "info":      $info,
+  "light":     $light,
+  "dark":      $dark
+);
+
+/* === TYPOGRAPHIE === */
+$font-family-base: 'Inter', sans-serif;
+$font-size-base: 1rem;
+$font-weight-base: 400;
+$headings-font-weight: 600;
+
+/* === TEXTES === */
+$body-color: #1f2937;
+
+/* === LIENS === */
+$link-color: $primary;
+$link-hover-color: darken($link-color, 10%);
+$link-decoration: none;
+$link-hover-decoration: underline;
+
+/* === ESPACEMENTS === */
+$spacer: 1rem;
+$spacers: (
+  0: 0,
+  1: 0.25rem,
+  2: 0.5rem,
+  3: 1rem,
+  4: 1.5rem,
+  5: 3rem
+);
+
+/* === BORDURES === */
+$border-radius: 0.5rem;
+$border-radius-sm: 0.25rem;
+$border-radius-lg: 1rem;
+
+/* === BOUTONS === */
+$btn-padding-y: 0.5rem;
+$btn-padding-x: 1rem;
+$btn-border-radius: $border-radius;
+$btn-font-weight: 500;
+$bs-btn-color: #ffffff;
+
+/* === FORMULAIRES === */
+$input-padding-y: 0.5rem;
+$input-padding-x: 0.75rem;
+$input-border-radius: $border-radius;
+
+/* === NAVBAR === */
+$navbar-light-toggler-border-color: transparent;
+$navbar-toggler-focus-width: 0;
+$navbar-padding-y: 1rem;
 
 // 2. Import de Bootstrap complet
 @import "../node_modules/bootstrap/scss/bootstrap";
 
 // 3. Styles personnalisés du projet
+
+body {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+    padding-top: 68px;
+}
+
+main{
+    margin-top: 40px !important;
+}
+
+footer{
+    margin-top: auto !important;
+}
+
+/* === MENU BURGER ANIMÉ === */
+.navbar-toggler {
+    color: $secondary;
+}
+
+.burger {
+    position: relative;
+    display: block;
+    width: 1.5rem;
+    height: 1.125rem;
+
+    span {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: currentColor;
+        border-radius: 2px;
+        transition: top 0.3s ease, transform 0.3s ease, opacity 0.2s ease;
+
+        &:nth-child(1) { top: 0; }
+        &:nth-child(2) { top: calc(50% - 1px); }
+        &:nth-child(3) { top: calc(100% - 2px); }
+    }
+}
+
+// Menu ouvert : les barres forment une croix
+.navbar-toggler:not(.collapsed) .burger span {
+    &:nth-child(1) { top: calc(50% - 1px); transform: rotate(45deg); }
+    &:nth-child(2) { opacity: 0; }
+    &:nth-child(3) { top: calc(50% - 1px); transform: rotate(-45deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .burger span { transition: none; }
+}
+
+
+/* === FOOTER : SÉPARATEURS === */
+// Mobile : barre horizontale au-dessus / Desktop : barre verticale à gauche
+.footer-divider {
+    border-top: 1px solid rgba($white, 0.5);
+    margin-top: map-get($spacers, 4);
+    padding-top: map-get($spacers, 4);
+
+    @include media-breakpoint-up(md) {
+        border-top: 0;
+        border-left: 1px solid rgba($white, 0.5);
+        margin-top: 0;
+        padding-top: 0;
+    }
+}
+
+/* === HOMEPAGE FEATURES === */
+
+.bg-gradient-primary {
+  background: linear-gradient(150deg, $primary 0%, darken($primary, 15%) 100%) !important;
+}
+
+.homepage-feature {
+    padding: 0.5rem 0.25rem;
+}
+
+.homepage-feature-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.625rem;
+    background: rgba($primary, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.homepage-feature-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: $primary;
+}
+
+.homepage-feature h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+}
+
+.homepage-feature p {
+    margin: 0;
+    color: #4b5568;
+    font-size: 0.92rem;
+}
+
+@media (max-width: 991.98px) {
+    .homepage-feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .homepage-feature-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
