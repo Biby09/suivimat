@@ -1,0 +1,26 @@
+# Dépendances
+node_modules/
+vendor/
+
+# Fichiers générés par Sass
+*.css.map
+.sass-cache/
+
+# Configuration locale / secrets (identifiants BDD, etc.)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp

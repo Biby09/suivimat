@@ -1,0 +1,20 @@
+{
+  "name": "style",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "sass scss/style.scss css/style.css --style=compressed --quiet-deps --silence-deprecation=import,global-builtin,color-functions,if-function",
+    "watch": "sass scss/style.scss css/style.css --watch --quiet-deps --silence-deprecation=import,global-builtin,color-functions,if-function"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bootstrap": "^5.3.8"
+  },
+  "devDependencies": {
+    "sass": "^1.105.0"
+  },
+  "private": true
+}
