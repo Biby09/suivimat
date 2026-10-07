@@ -1,4 +1,5 @@
 <?php
+require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 $page_title = 'SuiviMat | Accueil';
 $page_description = 'Bienvenue sur SuiviMat, votre application de suivi de matériel de prêt.';
 ?>
@@ -18,7 +19,7 @@ $page_description = 'Bienvenue sur SuiviMat, votre application de suivi de maté
                 <p class="lead mb-4">Inscrivez votre matériel, enregistrez les prêts et suivez chaque objet dans un espace partagé avec votre organisation.</p>
                 <?php if (!isset($_SESSION['user_id'])): ?>
                     <div class="d-flex gap-2 justify-content-center">
-                        <a class="btn btn-light" href="/register">Créer un compte</a>
+                        <a class="btn btn-light" href="/auth/register">Créer un compte</a>
                         <a class="btn btn-outline-light" href="/about.php">En savoir plus</a>
                     </div>
                 <?php else: ?>
@@ -125,7 +126,7 @@ $page_description = 'Bienvenue sur SuiviMat, votre application de suivi de maté
                 <h2 class="mb-4">Commencez dès aujourd'hui</h2>
                 <p class="lead mb-4">Simplifiez la gestion du matériel de votre association en quelques clics.</p>
                 <?php if (!isset($_SESSION['user_id'])): ?>
-                    <a class="btn btn-light btn-lg" href="/register">Créer un compte</a>
+                    <a class="btn btn-light btn-lg" href="/auth/register">Créer un compte</a>
                 <?php else: ?>
                     <a class="btn btn-light btn-lg" href="/dashboard">Mon espace</a>
                 <?php endif; ?>

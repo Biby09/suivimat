@@ -4,7 +4,7 @@
             <a href="/"><img src="/medias/logo.svg" alt="SuiviMat" height="20"></a>
             <div class="d-flex align-items-center gap-2 order-lg-last">
                 <?php if (!isset($_SESSION['user_id'])): ?>
-                    <a class="btn btn-secondary btn-sm" href="/login">Se connecter</a>
+                    <a class="btn btn-secondary btn-sm" href="/auth/login">Se connecter</a>
                 <?php else: ?>
                     <a class="btn btn-secondary btn-sm" href="/dashboard">Mon espace</a>
                     <div class="dropdown d-none d-lg-block">
@@ -16,7 +16,7 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/dashboard/account.php">Gérer mon compte</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="/logout">Se déconnecter</a></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout.php">Se déconnecter</a></li>
                         </ul>
                     </div>
                 <?php endif; ?>
@@ -46,7 +46,7 @@
                             <a class="nav-link" href="/dashboard/account.php">Gérer mon compte</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-danger" href="/logout">Se déconnecter</a>
+                            <a class="nav-link text-danger" href="/auth/logout.php">Se déconnecter</a>
                         </li>
                     </ul>
                 <?php endif; ?>

@@ -1,4 +1,5 @@
 <?php
+require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 $page_title = 'Gestion du matériel pour associations | SuiviMat';
 $page_description = 'Découvrez comment SuiviMat aide les associations à gérer le matériel, les prêts et les retours.';
 ?>

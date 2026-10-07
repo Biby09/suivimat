@@ -24,3 +24,6 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Configuration Apache locale (contient des clés secrètes)
+/.htaccess
