@@ -74,11 +74,23 @@ $navbar-padding-y: 1rem;
 
 // 3. Styles personnalisés du projet
 
+/* Bandeau « en cours de développement » (includes/header.php) : à retirer avec sa hauteur au lancement */
+$dev-banner-height: 28px;
+
+.dev-banner {
+    height: $dev-banner-height;
+    line-height: $dev-banner-height;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 body {
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
-    padding-top: 68px;
+    padding-top: 68px + $dev-banner-height;
 }
 
 main{

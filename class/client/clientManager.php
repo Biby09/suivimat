@@ -27,4 +27,27 @@ class ClientManager{
             throw new Exception("Client not found with ID: " . $id);
         }
     }
+
+    public function getAllClients(): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM clients WHERE idx_organisation = :organisation ORDER BY cli_lastname, cli_firstname');
+        $stmt->execute(['organisation' => $this->organisation->getId()]);
+        $clients = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $client = new Client();
+            $client->hydrate($ligne);
+            $clients[] = $client;
+        }
+
+        return $clients;
+    }
+
+    public function createClient(string $firstname, string $lastname): Client
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO clients (cli_firstname, cli_lastname, idx_organisation) VALUES (:firstname, :lastname, :organisation)');
+        $stmt->execute(['firstname' => $firstname, 'lastname' => $lastname, 'organisation' => $this->organisation->getId()]);
+
+        return $this->getClientById((int) $this->pdo->lastInsertId());
+    }
 }

@@ -77,7 +77,7 @@ class UserManager{
             'password' => $user->getPasswordHash()
         ]);
 
-        $user->hydrate(['user_id' => (int)$this->pdo->lastInsertId(), 'usr_firstname' => $user->getFirstname(), 'usr_lastname' => $user->getLastname(), 'usr_email' => $user->getEmail(), 'usr_password' => $user->getPasswordHash()]);
+        $user->hydrate(['id_user' => (int)$this->pdo->lastInsertId(), 'usr_firstname' => $user->getFirstname(), 'usr_lastname' => $user->getLastname(), 'usr_email' => $user->getEmail(), 'usr_password' => $user->getPasswordHash()]);
         return $user;
     }
 }

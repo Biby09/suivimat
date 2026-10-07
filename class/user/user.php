@@ -10,7 +10,7 @@ class User{
     
     public function hydrate(array $ligne): void
     {
-        $this->id = (int) $ligne['user_id'];
+        $this->id = (int) $ligne['id_user'];
         $this->firstname = $ligne['usr_firstname'];
         $this->lastname = $ligne['usr_lastname'];
         $this->email = $ligne['usr_email'];

@@ -1,4 +1,5 @@
 <header class="border-bottom border-primary border-5 fixed-top bg-white">
+    <div class="dev-banner bg-danger text-white text-center fw-bold px-2" role="status">Site en cours de développement</div>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a href="/"><img src="/medias/logo.svg" alt="SuiviMat" height="20"></a>

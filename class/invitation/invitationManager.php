@@ -27,4 +27,19 @@ class InvitationManager{
             throw new Exception("Invitation not found with ID: " . $id);
         }
     }
+
+    public function getAllInvitationsForUser(): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM invitations WHERE idx_user = :user_id AND inv_active = 1');
+        $stmt->execute(['user_id' => $this->user->getId()]);
+        $invitations = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $invitation = new Invitation();
+            $invitation->hydrate($ligne);
+            $invitations[] = $invitation;
+        }
+
+        return $invitations;
+    }
 }
