@@ -15,8 +15,7 @@
 
                 </div>
                 <div class="col-12 col-md footer-divider d-flex flex-column justify-content-center align-items-start">
-                    <p class="mb-0">WebApp réalisée par Florian Lovis dans le cadre d'un travail professionnel
-                        interdisciplinaire au <a href="https://www.cpnv.ch" class="text-white" target="_blank"
+                    <p class="mb-0">WebApp réalisée par Florian Lovis dans le cadre d'un travail pratique individuel à blanc au <a href="https://www.cpnv.ch" class="text-white" target="_blank"
                             rel="noopener noreferrer">Centre Professionnel du nord Vaudois (CPNV)</a>.</p>
                 </div>
             </div>

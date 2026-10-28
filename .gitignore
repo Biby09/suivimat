@@ -27,3 +27,7 @@ desktop.ini
 
 # Configuration Apache locale (contient des clés secrètes)
 /.htaccess
+
+# Photos envoyées par les utilisateurs (seul le .htaccess est versionné)
+/upload/*
+!/upload/.htaccess

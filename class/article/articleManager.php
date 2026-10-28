@@ -46,6 +46,82 @@ class ArticleManager
     }
 
     /**
+     * Recherche paginée parmi les articles configurés, triés par nom. Retourne ['articles' => Article[], 'total' => int].
+     * $categoryIds : null = toutes les catégories, sinon IDs autorisés (une catégorie et ses sous-catégories)
+     * $withoutCategory : uniquement les articles sans catégorie
+     * $words : chaque mot doit apparaître dans le nom ou le code de l'article, ou dans une de ses catégories :
+     *          [['text' => mot, 'category_ids' => IDs des catégories dont le nom (ou celui d'une parente) contient le mot], ...]
+     * La collation de la base ignore la casse et les accents.
+     */
+    public function searchConfiguredArticles(?array $categoryIds, bool $withoutCategory, array $words, int $limit, int $offset): array
+    {
+        $where = ["idx_organisation = :organisation", "art_status <> 'Non attribué'"];
+        $params = ['organisation' => $this->organisation->getId()];
+
+        if ($withoutCategory) {
+            $where[] = 'idx_category IS NULL';
+        } elseif ($categoryIds !== null) {
+            $where[] = $categoryIds ? 'idx_category IN (' . self::placeholders('category', $categoryIds, $params) . ')' : '0';
+        }
+
+        foreach ($words as $index => $word) {
+            $params["word$index"] = '%' . self::escapeLike($word['text']) . '%';
+            $condition = "art_name LIKE :word$index OR art_code LIKE :word$index";
+            if ($word['category_ids']) {
+                $condition .= ' OR idx_category IN (' . self::placeholders("word{$index}_category", $word['category_ids'], $params) . ')';
+            }
+            $where[] = "($condition)";
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM articles WHERE $whereSql");
+        $stmt->execute($params);
+        $total = (int) $stmt->fetchColumn();
+
+        // LIMIT et OFFSET sont des entiers validés : insérés directement (PDO les mettrait entre guillemets)
+        $stmt = $this->pdo->prepare("SELECT * FROM articles WHERE $whereSql ORDER BY art_name, art_code LIMIT " . max(0, $limit) . ' OFFSET ' . max(0, $offset));
+        $stmt->execute($params);
+        $articles = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $article = new Article();
+            $article->hydrate($ligne);
+            $articles[] = $article;
+        }
+
+        return ['articles' => $articles, 'total' => $total];
+    }
+
+    /**
+     * Nombre d'articles configurés par catégorie : [id_catégorie => nombre], 0 pour « sans catégorie »
+     */
+    public function countConfiguredArticlesByCategory(): array
+    {
+        $stmt = $this->pdo->prepare("SELECT COALESCE(idx_category, 0), COUNT(*) FROM articles WHERE idx_organisation = :organisation AND art_status <> 'Non attribué' GROUP BY idx_category");
+        $stmt->execute(['organisation' => $this->organisation->getId()]);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_KEY_PAIR));
+    }
+
+    // « 50% » doit chercher le caractère %, pas n'importe quelle suite
+    public static function escapeLike(string $text): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $text);
+    }
+
+    // Paramètres nommés pour une clause IN : « :prefix0, :prefix1… », ajoutés à $params
+    private static function placeholders(string $prefix, array $values, array &$params): string
+    {
+        $names = [];
+        foreach (array_values($values) as $index => $value) {
+            $params["$prefix$index"] = (int) $value;
+            $names[] = ":$prefix$index";
+        }
+        return implode(', ', $names);
+    }
+
+    /**
      * Valeurs des champs personnalisés d'un article : [id_champ => valeur]
      */
     public function getAdditionalFieldValues(Article $article): array

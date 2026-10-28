@@ -1,0 +1,8 @@
+# Photos des objets : seuls les fichiers JPEG sont servis, aucun script n'est exécuté
+Options -Indexes
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<FilesMatch "(?<!\.jpg)$">
+    Require all denied
+</FilesMatch>

@@ -19,11 +19,16 @@
     const fieldsContainer = root.querySelector("[data-role='fields']");
     const skipButton = root.querySelector("[data-role='skip']");
     const saveButton = root.querySelector("[data-role='save']");
+    const photosContainer = root.querySelector("[data-role='photos']");
+    const photoInput = root.querySelector("[data-role='photo-input']");
+    const MAX_PHOTOS = 10;       // nouvelles photos par enregistrement (limite de l'API)
+    const PHOTO_MAX_SIZE = 1600; // plus grand côté, en pixels
 
     const queue = [];          // articles en attente ; le premier est celui en cours
     const pending = new Set(); // codes en cours de recherche
     let categories = [];
     let configuredCount = 0;
+    let newPhotos = [];        // photos à envoyer pour l'objet en cours : { blob, url }
 
     // Écran tactile : pas de focus automatique, le clavier masquerait la caméra
     const hasKeyboard = window.matchMedia("(pointer: fine)").matches;
@@ -103,6 +108,84 @@
         });
     }
 
+    // Réduit une photo avant l'envoi (limite d'upload du serveur, données mobiles)
+    async function resizePhoto(file) {
+        try {
+            const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+            const ratio = Math.min(1, PHOTO_MAX_SIZE / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(bitmap.width * ratio);
+            canvas.height = Math.round(bitmap.height * ratio);
+            canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            return await new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject()), "image/jpeg", 0.85));
+        } catch {
+            return file; // navigateur incapable de réduire : le serveur s'en charge
+        }
+    }
+
+    function photoThumbnail(url, alt) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "position-relative";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = alt;
+        img.width = 72;
+        img.height = 72;
+        img.className = "rounded border object-fit-cover";
+        wrapper.appendChild(img);
+        return wrapper;
+    }
+
+    // Photos déjà enregistrées, puis nouvelles photos (retirables avant l'envoi)
+    function renderPhotos() {
+        photosContainer.innerHTML = "";
+        (queue[0]?.images ?? []).forEach((image, index) => {
+            photosContainer.appendChild(photoThumbnail(image.url, `Photo ${index + 1} enregistrée`));
+        });
+
+        newPhotos.forEach((photo, index) => {
+            const thumbnail = photoThumbnail(photo.url, `Nouvelle photo ${index + 1}`);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "btn btn-sm btn-danger position-absolute top-0 end-0 py-0 px-1 lh-sm";
+            remove.setAttribute("aria-label", `Retirer la nouvelle photo ${index + 1}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => {
+                URL.revokeObjectURL(photo.url);
+                newPhotos.splice(newPhotos.indexOf(photo), 1);
+                renderPhotos();
+            });
+            thumbnail.appendChild(remove);
+            photosContainer.appendChild(thumbnail);
+        });
+
+        photoInput.disabled = newPhotos.length >= MAX_PHOTOS;
+    }
+
+    function clearNewPhotos() {
+        newPhotos.forEach((photo) => URL.revokeObjectURL(photo.url));
+        newPhotos = [];
+        photoInput.value = "";
+    }
+
+    async function addPhotos(files) {
+        const accepted = [...files].filter((file) => file.type.startsWith("image/"));
+        const room = MAX_PHOTOS - newPhotos.length;
+        if (accepted.length > room) {
+            showMessage("warning", `Vous pouvez ajouter au maximum ${MAX_PHOTOS} photos à la fois.`);
+        }
+
+        photoInput.disabled = true;
+        for (const file of accepted.slice(0, room)) {
+            const blob = await resizePhoto(file);
+            newPhotos.push({ blob, url: URL.createObjectURL(blob) });
+        }
+        photoInput.value = "";
+        renderPhotos();
+    }
+
     function renderQueue() {
         queueList.innerHTML = "";
         queue.forEach((article, index) => {
@@ -122,6 +205,7 @@
         empty.hidden = Boolean(article);
         form.hidden = !article;
         if (!article) {
+            clearNewPhotos();
             return;
         }
 
@@ -131,6 +215,8 @@
         nameInput.value = article.name ?? "";
         categorySelect.value = article.category_id ?? "";
         renderFields(article.fields);
+        clearNewPhotos();
+        renderPhotos();
         if (hasKeyboard) {
             nameInput.focus({ preventScroll: true });
         }
@@ -172,6 +258,7 @@
         const formData = new FormData(form);
         formData.append("organisation_id", organisationId);
         formData.append("code", article.code);
+        newPhotos.forEach((photo, index) => formData.append("photos[]", photo.blob, `photo-${index + 1}.jpg`));
 
         saveButton.disabled = true;
         const data = await fetchJson("/api/article/configure-article.php", { method: "POST", body: formData });
@@ -189,6 +276,7 @@
         }
         configuredCount++;
         showMessage("success", `${formData.get("name")} (${article.code}) enregistré.`);
+        root.dispatchEvent(new CustomEvent("article-configured", { bubbles: true, detail: { code: article.code } }));
         renderCurrent();
         scrollAfterChange();
     }
@@ -206,6 +294,7 @@
         // Les valeurs déjà saisies sont conservées si on revient à la même catégorie
         renderFields(queue[0]?.fields);
     });
+    photoInput.addEventListener("change", () => addPhotos(photoInput.files));
     form.addEventListener("submit", (e) => {
         e.preventDefault();
         saveCurrent();

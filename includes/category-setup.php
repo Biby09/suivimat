@@ -1,8 +1,9 @@
 <?php
 /*
-    Liste et création des catégories d'une organisation, avec leurs champs personnalisés.
+    Liste, création, modification et suppression des catégories d'une organisation, avec leurs champs personnalisés.
+    Un clic sur le nom d'une catégorie ouvre le modal de modification.
     Prérequis : $organisation (Organisation) doit être défini avant l'inclusion.
-    Après chaque création, l'événement « categories-changed » est émis sur document
+    Après chaque création, modification ou suppression, l'événement « categories-changed » est émis sur document
     (detail.categories : liste à jour), par exemple pour recharger un formulaire d'objet.
 */
 ?>
@@ -42,5 +43,7 @@
             </form>
         </div>
     </div>
+
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/edit-category-modal.php'; ?>
 </div>
 <script src="/scripts/category-setup.js" defer></script>

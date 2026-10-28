@@ -4,6 +4,7 @@
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/article/articleManager.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/class/image/imageManager.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -49,5 +50,6 @@ echo json_encode([
         'category_id' => $article->getCategoryId(),
         'status' => $article->getStatus(),
         'fields' => $articleManager->getAdditionalFieldValues($article),
+        'images' => array_map(fn(Image $image) => ['id' => $image->getId(), 'url' => $image->getUrl()], (new ImageManager($mysqlClient))->getArticleImages($article)),
     ],
 ]);

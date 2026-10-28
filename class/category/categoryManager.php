@@ -42,12 +42,138 @@ class CategoryManager{
         return $categories;
     }
 
-    public function categoryNameExists(string $name): bool
+    /**
+     * $excludeId : catégorie à ignorer (celle qu'on renomme)
+     */
+    public function categoryNameExists(string $name, ?int $excludeId = null): bool
     {
-        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM categories WHERE idx_organisation = :organisation AND cat_name = :name');
-        $stmt->execute(['organisation' => $this->organisation->getId(), 'name' => $name]);
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM categories WHERE idx_organisation = :organisation AND cat_name = :name AND id_category <> :exclude');
+        $stmt->execute(['organisation' => $this->organisation->getId(), 'name' => $name, 'exclude' => $excludeId ?? 0]);
 
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * IDs des catégories dont le nom contient $text, ou dont une catégorie parente le contient
+     * (un objet rangé dans « Tentes › Igloo » est trouvé en cherchant « tentes »)
+     */
+    public function findCategoryIdsByName(string $text): array
+    {
+        $stmt = $this->pdo->prepare('SELECT id_category FROM categories WHERE idx_organisation = :organisation AND cat_name LIKE :text');
+        $stmt->execute(['organisation' => $this->organisation->getId(), 'text' => '%' . ArticleManager::escapeLike($text) . '%']);
+
+        $ids = [];
+        foreach (array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)) as $id) {
+            array_push($ids, $id, ...$this->getDescendantIds($id));
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * IDs de toutes les sous-catégories (directes ou non) d'une catégorie
+     */
+    public function getDescendantIds(int $id): array
+    {
+        $childrenByParent = [];
+        foreach ($this->getAllCategories() as $category) {
+            $childrenByParent[$category->getParentId() ?? 0][] = $category->getId();
+        }
+
+        $descendants = [];
+        $toVisit = $childrenByParent[$id] ?? [];
+        while ($toVisit) {
+            $childId = array_pop($toVisit);
+            if (!in_array($childId, $descendants, true)) {
+                $descendants[] = $childId;
+                array_push($toVisit, ...($childrenByParent[$childId] ?? []));
+            }
+        }
+
+        return $descendants;
+    }
+
+    public function countSubcategories(int $id): int
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM categories WHERE idx_cat_parent = :id AND idx_organisation = :organisation');
+        $stmt->execute(['id' => $id, 'organisation' => $this->organisation->getId()]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function countArticles(int $id): int
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM articles WHERE idx_category = :id AND idx_organisation = :organisation');
+        $stmt->execute(['id' => $id, 'organisation' => $this->organisation->getId()]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Modifie une catégorie et ses champs personnalisés. Tout ou rien.
+     * $fields : champs conservés [id_champ => nouveau nom] ; les champs absents sont supprimés avec leurs valeurs.
+     * $newFieldNames : champs à ajouter.
+     */
+    public function updateCategory(int $id, string $name, ?int $parentId, array $fields, array $newFieldNames): Category
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $stmt = $this->pdo->prepare('UPDATE categories SET cat_name = :name, idx_cat_parent = :parent WHERE id_category = :id AND idx_organisation = :organisation');
+            $stmt->execute(['name' => $name, 'parent' => $parentId, 'id' => $id, 'organisation' => $this->organisation->getId()]);
+
+            $stmt = $this->pdo->prepare('SELECT id_af FROM additional_fields WHERE idx_category = :category');
+            $stmt->execute(['category' => $id]);
+            $removedFieldIds = array_diff(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)), array_keys($fields));
+
+            $deleteValues = $this->pdo->prepare('DELETE FROM additional_fields_value WHERE idx_additional_fields = :field');
+            $deleteField = $this->pdo->prepare('DELETE FROM additional_fields WHERE id_af = :field AND idx_category = :category');
+            foreach ($removedFieldIds as $fieldId) {
+                $deleteValues->execute(['field' => $fieldId]);
+                $deleteField->execute(['field' => $fieldId, 'category' => $id]);
+            }
+
+            $stmt = $this->pdo->prepare('UPDATE additional_fields SET ad_name = :name WHERE id_af = :field AND idx_category = :category');
+            foreach ($fields as $fieldId => $fieldName) {
+                $stmt->execute(['name' => $fieldName, 'field' => $fieldId, 'category' => $id]);
+            }
+
+            $stmt = $this->pdo->prepare('INSERT INTO additional_fields (ad_name, idx_category) VALUES (:name, :category)');
+            foreach ($newFieldNames as $fieldName) {
+                $stmt->execute(['name' => $fieldName, 'category' => $id]);
+            }
+
+            $this->pdo->commit();
+        } catch (Exception $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+
+        return $this->getCategoryById($id);
+    }
+
+    /**
+     * Supprime une catégorie et ses champs personnalisés. Tout ou rien.
+     * La catégorie ne doit plus contenir d'objets ni de sous-catégories.
+     */
+    public function deleteCategory(int $id): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $stmt = $this->pdo->prepare('DELETE additional_fields_value FROM additional_fields_value JOIN additional_fields ON additional_fields.id_af = additional_fields_value.idx_additional_fields WHERE additional_fields.idx_category = :category');
+            $stmt->execute(['category' => $id]);
+
+            $stmt = $this->pdo->prepare('DELETE FROM additional_fields WHERE idx_category = :category');
+            $stmt->execute(['category' => $id]);
+
+            $stmt = $this->pdo->prepare('DELETE FROM categories WHERE id_category = :id AND idx_organisation = :organisation');
+            $stmt->execute(['id' => $id, 'organisation' => $this->organisation->getId()]);
+
+            $this->pdo->commit();
+        } catch (Exception $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     /**

@@ -15,7 +15,7 @@
                             </svg>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="/dashboard/account.php">Gérer mon compte</a></li>
+                            <li><a class="dropdown-item" href="/dashboard/account">Gérer mon compte</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="/auth/logout.php">Se déconnecter</a></li>
                         </ul>
@@ -44,7 +44,7 @@
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <ul class="navbar-nav d-lg-none border-top mt-2 pt-2">
                         <li class="nav-item">
-                            <a class="nav-link" href="/dashboard/account.php">Gérer mon compte</a>
+                            <a class="nav-link" href="/dashboard/account">Gérer mon compte</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-danger" href="/auth/logout.php">Se déconnecter</a>

@@ -43,6 +43,13 @@ class OrganisationManager{
         return $organisations;
     }
 
+    // Date de dernière ouverture : les organisations récentes apparaissent en premier sur le tableau de bord
+    public function markAsOpened(Organisation $organisation): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE organisations SET org_last_open = CURRENT_TIMESTAMP WHERE id_organisation = :id');
+        $stmt->execute(['id' => $organisation->getId()]);
+    }
+
     public function createOrganisation(string $name): Organisation
     {
         // Création de l'organisation et ajout de l'utilisateur comme membre : tout ou rien

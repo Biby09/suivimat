@@ -4,8 +4,7 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'ID d\'organisation invalide']);
-    exit;
+    die('ID d\'organisation manquant ou invalide.');
 }
 
 if (!isset($_GET['page']) || !is_numeric($_GET['page'])) {
@@ -19,6 +18,8 @@ if (!isset($_GET['page']) || !is_numeric($_GET['page'])) {
     Page 2
         Création des catégories et des champs personnalisés pour chaque catégorie
     Page 3
+        Enregistrement des objets (scan des codes QR)
+    Page 4
         Ajout des clients à l'organisation
 */
 ?>
@@ -47,6 +48,8 @@ if ($_GET['page'] == 1) {
     include_once $_SERVER['DOCUMENT_ROOT'] . '/dashboard/organisation/init-orga/page2.php';
 } elseif ($_GET['page'] == 3) {
     include_once $_SERVER['DOCUMENT_ROOT'] . '/dashboard/organisation/init-orga/page3.php';
+} elseif ($_GET['page'] == 4) {
+    include_once $_SERVER['DOCUMENT_ROOT'] . '/dashboard/organisation/init-orga/page4.php';
 } else {
     http_response_code(400);
     echo json_encode(['error' => 'Page d\'initialisation invalide']);

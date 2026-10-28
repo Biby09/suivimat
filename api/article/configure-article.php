@@ -1,12 +1,15 @@
 <?php
-// Enregistre le nom, la catégorie et les champs personnalisés d'un article
+// Enregistre le nom, la catégorie, les champs personnalisés et les nouvelles photos d'un article
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/article/articleManager.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/category/categoryManager.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/class/image/imageManager.php';
 
 header('Content-Type: application/json; charset=utf-8');
+
+const MAX_PHOTOS = 10; // par enregistrement
 
 function sendError(int $status, string $message): void
 {
@@ -17,6 +20,11 @@ function sendError(int $status, string $message): void
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendError(405, 'Méthode non autorisée');
+}
+
+// post_max_size dépassé : PHP vide $_POST et $_FILES
+if (empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    sendError(413, 'Les photos sont trop volumineuses');
 }
 
 $organisationId = filter_input(INPUT_POST, 'organisation_id', FILTER_VALIDATE_INT);
@@ -40,6 +48,29 @@ foreach ($fields as $value) {
     if (mb_strlen($value) > 200) {
         sendError(400, 'Un champ personnalisé ne peut pas dépasser 200 caractères');
     }
+}
+
+// Photos : photos[] (envoi multiple), réduites côté navigateur avant l'envoi
+$photoPaths = [];
+if (isset($_FILES['photos']) && is_array($_FILES['photos']['error'])) {
+    foreach ($_FILES['photos']['error'] as $index => $error) {
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+            sendError(413, 'Une photo est trop volumineuse');
+        }
+        if ($error !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['photos']['tmp_name'][$index])) {
+            sendError(400, 'L\'envoi d\'une photo a échoué');
+        }
+        if (!ImageManager::isValidImage($_FILES['photos']['tmp_name'][$index])) {
+            sendError(400, 'Seules les photos JPEG, PNG ou WebP sont acceptées');
+        }
+        $photoPaths[] = $_FILES['photos']['tmp_name'][$index];
+    }
+}
+if (count($photoPaths) > MAX_PHOTOS) {
+    sendError(400, 'Vous pouvez ajouter au maximum ' . MAX_PHOTOS . ' photos à la fois');
 }
 
 try {
@@ -70,6 +101,15 @@ try {
 } catch (Exception $e) {
     error_log('Configuration de l\'article impossible : ' . $e->getMessage());
     sendError(500, 'Erreur lors de l\'enregistrement de l\'objet');
+}
+
+if ($photoPaths) {
+    try {
+        (new ImageManager($mysqlClient))->addArticleImages($article, $photoPaths);
+    } catch (Exception $e) {
+        error_log('Enregistrement des photos impossible : ' . $e->getMessage());
+        sendError(500, 'L\'objet est enregistré, mais pas ses photos. Réessayez de les ajouter.');
+    }
 }
 
 echo json_encode(['success' => true]);

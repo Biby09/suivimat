@@ -76,6 +76,8 @@ $navbar-padding-y: 1rem;
 
 /* Bandeau « en cours de développement » (includes/header.php) : à retirer avec sa hauteur au lancement */
 $dev-banner-height: 28px;
+// Hauteur du header fixe (includes/header.php) : décalage du contenu et des éléments « sticky »
+$header-height: 68px + $dev-banner-height;
 
 .dev-banner {
     height: $dev-banner-height;
@@ -90,7 +92,7 @@ body {
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
-    padding-top: 68px + $dev-banner-height;
+    padding-top: $header-height;
 }
 
 main{
@@ -203,4 +205,54 @@ footer{
         grid-template-columns: 1fr;
         gap: 1.5rem;
     }
+}
+// Catégories (includes/category-setup.php) : crayon affiché au survol du nom
+.category-setup-edit-icon {
+    opacity: 0;
+    color: $primary;
+    vertical-align: -0.1em;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.category-setup-edit:hover .category-setup-edit-icon,
+.category-setup-edit:focus-visible .category-setup-edit-icon {
+    opacity: 1;
+}
+
+// Écrans tactiles : pas de survol, le crayon reste visible
+@media (hover: none) {
+    .category-setup-edit-icon {
+        opacity: 1;
+    }
+}
+
+// Inventaire (dashboard/organisation/index.php)
+// Colonne de gauche (recherche + catégories) fixée sous le header sur grand écran ; les objets occupent le reste
+@include media-breakpoint-up(lg) {
+    .organisation-sidebar {
+        position: sticky;
+        top: calc(#{$header-height} + #{map-get($spacers, 3)});
+        z-index: $zindex-sticky;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - #{$header-height} - #{map-get($spacers, 3) * 2});
+    }
+
+    // Beaucoup de catégories : la liste défile seule, la recherche reste visible
+    .organisation-aside {
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+// Propositions de recherche : plus larges que la colonne, au-dessus des cartes d'objets
+.organisation-suggestions {
+    z-index: $zindex-dropdown;
+    min-width: 100%;
+    width: max-content;
+    max-width: min(28rem, calc(100vw - #{map-get($spacers, 4)}));
+}
+
+.organisation-results {
+    scroll-margin-top: calc(#{$header-height} + #{map-get($spacers, 3)});
 }
