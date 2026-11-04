@@ -28,7 +28,7 @@ $robots_directive = $robots_directive ?? ($private_path ? 'noindex, nofollow' : 
     <meta name="twitter:title" content="<?= htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="twitter:description" content="<?= htmlspecialchars($page_description, ENT_QUOTES, 'UTF-8') ?>">
 
-    <!-- ?v=… change à chaque recompilation du CSS : le navigateur ne garde pas une ancienne version en cache -->
-    <link rel="stylesheet" href="/style/css/style.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . '/style/css/style.css') ?>">
+    <!-- asset() (config/init.php) : ?v=… change à chaque recompilation du CSS, pas d'ancienne version en cache -->
+    <link rel="stylesheet" href="<?= asset('/style/css/style.css') ?>">
     <script src="/style/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js" defer></script>
 </head>

@@ -10,8 +10,9 @@ $page_title = "Dashboard";
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 ?>
 
-<body>
-    <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/header.php'; ?>
+<!-- app : header de l'application (includes/app-header.php), plus fin -->
+<body class="app">
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-header.php'; ?>
     <main class="container py-5">
         <h1 class="mb-4">Bienvenue sur votre tableau de bord, <?= htmlspecialchars($user->getFullname()) ?> !</h1>
         <p class="lead">Ici, vous pouvez gérer votre matériel et organiser vos associations.</p>
@@ -119,7 +120,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
             </div>
         </div>
     </main>
-    <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php'; ?>
+    <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-footer.php'; ?>
     <script src="/scripts/sendForm.js"></script>
     <script>
         document.getElementById("create-organisation-form").addEventListener("submit", async (e) => {

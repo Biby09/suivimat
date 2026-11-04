@@ -38,8 +38,12 @@ try{
     exit;
 }
 ?>
-<body>
-<?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/header.php';
+<!-- app : header de l'application (includes/app-header.php), plus fin -->
+<body class="app">
+<?php
+// Pas de scanner rapide pendant l'initialisation : il ferait quitter le parcours
+$app_header_scanner = false;
+include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-header.php';
 
 
 if ($_GET['page'] == 1) {
@@ -56,7 +60,7 @@ if ($_GET['page'] == 1) {
     exit;
 }
 
-include $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php';
+include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-footer.php';
 ?>
 
 </body>

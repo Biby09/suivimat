@@ -1,6 +1,12 @@
+<?php
+/*
+    Footer du site public (accueil, à propos, contact, connexion, page d'un objet perdu, erreurs).
+    L'application (/dashboard) utilise une version d'une ligne : includes/app-footer.php. APP_VERSION : config/init.php
+*/
+?>
 <footer class="bg-primary text-white py-4">
     <div class="container">
-        <div class="text-center text-white-100">
+        <div class="text-center">
             <div class="row text-start mb-5 mt-3">
                 <div class="col-12 col-md d-flex flex-column justify-content-center align-items-start">
                     <a href="/"><img src="/medias/logo-blanc.svg" alt="SuiviMat" height="25"></a>
@@ -22,11 +28,10 @@
 
             <p class="mb-0">© <?php echo date("Y"); ?> CPNV. Tous droits réservés.</p>
 
+            <!-- « Mentions légales » est déjà dans la colonne de liens ci-dessus : pas de doublon ici -->
             <p class="small mb-0">
-                Version 0.0.0 &middot;
+                Version <?= htmlspecialchars(APP_VERSION) ?> &middot;
                 <a href="https://github.com/Biby09/suivimat" class="link-light" target="_blank" rel="noopener noreferrer" style="color: white">GitHub</a>
-                &middot;
-                <a href="/mentions-legales.php" class="link-light" style="color: white">Mentions légales</a>
             </p>
 
         </div>

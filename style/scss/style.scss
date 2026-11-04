@@ -76,8 +76,49 @@ $navbar-padding-y: 1rem;
 
 /* Bandeau « en cours de développement » (includes/header.php) : à retirer avec sa hauteur au lancement */
 $dev-banner-height: 28px;
-// Hauteur du header fixe (includes/header.php) : décalage du contenu et des éléments « sticky »
+// Hauteur du header fixe du site public (includes/header.php)
 $header-height: 68px + $dev-banner-height;
+// Hauteur du header fixe de l'application (includes/app-header.php, pages avec <body class="app">), menu burger fermé
+$app-header-height: 79px;
+
+// Variable CSS (et non Sass) : sa valeur change selon la page, ce que Sass (calculé à la compilation) ne peut pas faire.
+// Utilisée pour décaler le contenu sous le header et placer les éléments « sticky » : var(--header-height)
+:root {
+    --header-height: #{$header-height};
+}
+
+body.app {
+    --header-height: #{$app-header-height};
+}
+
+/* === HEADER DE L'APPLICATION === */
+// Sélecteur de l'organisation courante : grand sur ordinateur ; sur mobile, il prend la place libre entre le logo
+// et le burger (nom tronqué « … » s'il est trop long)
+.app-header-start {
+    // Base 0 (et non « auto ») : la place libre est partagée sans tenir compte de la longueur du nom ;
+    // le burger reste ainsi sur la même ligne, quel que soit le nom de l'organisation
+    flex: 1 1 0%;
+    min-width: 0;
+
+    @include media-breakpoint-up(lg) {
+        flex: 0 1 auto;
+    }
+}
+
+.app-org-switch {
+    min-width: 0;
+    flex: 1 1 auto;
+
+    @include media-breakpoint-up(lg) {
+        flex: 0 0 auto;
+        width: 16rem;
+    }
+}
+
+// Application : un peu moins d'espace sous le header que sur le site public (40px)
+.app main {
+    margin-top: map-get($spacers, 2) !important;
+}
 
 .dev-banner {
     height: $dev-banner-height;
@@ -92,7 +133,7 @@ body {
     display: flex !important;
     flex-direction: column !important;
     min-height: 100vh !important;
-    padding-top: $header-height;
+    padding-top: var(--header-height);
 }
 
 main{
@@ -235,7 +276,7 @@ footer{
     .organisation-sidebar {
         position: sticky;
         top: min(
-            calc(#{$header-height} + #{map-get($spacers, 3)}),
+            calc(var(--header-height) + #{map-get($spacers, 3)}),
             calc(100vh - var(--sidebar-height, 0px) - #{map-get($spacers, 3)})
         );
         z-index: $zindex-sticky;
@@ -263,8 +304,63 @@ footer{
     max-width: min(28rem, calc(100vw - #{map-get($spacers, 4)}));
 }
 
+// Inventaire (dashboard/organisation/index.php)
+.organisation-page {
+    padding-bottom: map-get($spacers, 4);
+}
+
+// Pages avec un élément fixé en bas de l'écran sur mobile : barre d'actions de la fiche d'un objet,
+// bouton flottant « Scanner » de l'inventaire. Espace sous toute la page (footer compris) pour qu'il ne cache rien
+@include media-breakpoint-down(lg) {
+    .has-action-bar {
+        padding-bottom: 4.5rem;
+    }
+}
+
+// Barre d'actions du bas (mobile) : au-dessus de la barre d'accueil des iPhone récents
+.article-action-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+// Scanner rapide (includes/modals/quick-scan-modal.php) sur mobile, où le modal est en plein écran :
+// la caméra prend toute la hauteur libre, la saisie du code reste en bas de l'écran, sous le pouce
+@include media-breakpoint-down(sm) {
+    .quick-scan-modal {
+        // Chaque niveau devient une colonne flex : flex-grow transmet la hauteur de l'écran jusqu'à la caméra
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            // iPhone sans bouton : la saisie reste au-dessus de la barre d'accueil
+            padding-bottom: max(#{map-get($spacers, 3)}, env(safe-area-inset-bottom));
+        }
+
+        // Carte du scanner sans bordure ni marge : plus de place pour l'image
+        .scanner {
+            flex-grow: 1;
+            border: 0;
+
+            > .card-body {
+                display: flex;
+                flex-direction: column;
+                padding: 0;
+            }
+        }
+
+        // Zone caméra : remplit la hauteur restante au lieu du format 16:9
+        [data-role='viewport'] {
+            flex-grow: 1;
+            min-height: 12rem;
+
+            // .ratio fixe la hauteur avec un ::before (padding-top: 56.25 %) : désactivé ici
+            &::before {
+                display: none;
+            }
+        }
+    }
+}
+
 .organisation-results {
-    scroll-margin-top: calc(#{$header-height} + #{map-get($spacers, 3)});
+    scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
 }
 
 //Ombre des cartes sur l'index des organisations (dashboard/organisation/index.php)
