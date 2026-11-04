@@ -84,6 +84,7 @@
     objectCount.addEventListener("change", updateObjectCount);
 
     // Génération asynchrone : erreurs affichées dans le modal, PDF ouvert dans un nouvel onglet
+    // (l'API renvoie { success, url } ; url = adresse du PDF)
     const modal = document.getElementById("download-qr-modal");
 
     // Bouton avec data-reprint-code (ex. « Réimprimer l'étiquette » de la fiche d'un objet) : réimpression de ce code ;
@@ -145,18 +146,18 @@
 
         try {
             const response = await fetch(form.action, { method: "POST", body: new FormData(form) });
-            const contentType = response.headers.get("Content-Type") || "";
+            // clone() : la réponse ne peut être lue qu'une fois, getErrorMessage() doit pouvoir la relire
+            const result = response.ok ? await response.clone().json().catch(() => null) : null;
 
-            if (!response.ok || !contentType.includes("application/pdf")) {
+            if (!result?.success) {
                 pdfTab?.close();
                 showMessage("danger", await getErrorMessage(response));
                 return;
             }
 
-            if (pdfUrl) {
-                URL.revokeObjectURL(pdfUrl);
-            }
-            pdfUrl = URL.createObjectURL(await response.blob());
+            // Adresse du PDF sur le serveur (api/organisation/qr-pdf.php) : il est enregistré sous son vrai nom
+            // (« etiquettes-qr-… .pdf »), alors qu'une adresse « blob: » donnerait « document.pdf »
+            pdfUrl = result.url;
             if (pdfTab) {
                 pdfTab.location.href = pdfUrl;
             }

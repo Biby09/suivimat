@@ -5,6 +5,7 @@
 //   reprint : codes existants réimprimés (étiquette abîmée, ancienne adresse…), sans en créer :
 //             reprint_scope = all (tous les objets enregistrés) ou codes (reprint_codes : codes séparés par des espaces / virgules)
 // Planches : sheet_format (A4, A5, Letter ou custom avec sheet_width / sheet_height), label_columns, label_rows.
+// Réponse JSON : { success, url } ; url = adresse du PDF (api/organisation/qr-pdf.php), à ouvrir dans un onglet.
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
@@ -189,4 +190,31 @@ if ($exportType === 'labels') {
     }
 }
 
-$pdf->Output('codes-qr-' . $organisation->getId() . '-' . date('Ymd-His') . '.pdf', 'I');
+// Nom du fichier : « etiquettes-qr-mon-association-2026-11-04-1932.pdf » (ou « codes-qr-… » pour la liste).
+// iconv ASCII//TRANSLIT remplace les accents (é → e) ; le reste devient des tirets
+$slug = strtolower(preg_replace('/[^A-Za-z0-9]+/', '-', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $organisation->getName()) ?: ''));
+$fileName = ($exportType === 'labels' ? 'etiquettes-qr-' : 'codes-qr-') . (trim($slug, '-') ?: 'organisation') . '-' . date('Y-m-d-Hi') . '.pdf';
+$pdf->SetTitle(substr($fileName, 0, -4)); // titre de l'onglet du navigateur
+
+// Le PDF n'est pas renvoyé directement : ouvert depuis une adresse « blob: » en JavaScript, le navigateur
+// l'enregistrerait sous le nom « document.pdf ». Il est gardé dans un fichier temporaire et servi par
+// api/organisation/qr-pdf.php, dont l'adresse est renvoyée ; cette réponse-là porte le nom du fichier.
+$directory = QR_PDF_DIRECTORY;
+if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+    sendError(500, 'Erreur lors de la génération du PDF');
+}
+// Ménage : supprime les PDF de plus d'un jour
+foreach (glob($directory . '/*.pdf') ?: [] as $oldFile) {
+    if (filemtime($oldFile) < time() - 86400) {
+        @unlink($oldFile);
+    }
+}
+
+$token = bin2hex(random_bytes(16)); // 32 caractères aléatoires : impossible à deviner
+$pdf->Output($directory . '/' . $token . '.pdf', 'F'); // « F » : écrit dans un fichier
+
+// Seule la session qui a généré le PDF peut le télécharger
+$_SESSION['qr_pdfs'][$token] = $fileName;
+
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode(['success' => true, 'url' => '/api/organisation/qr-pdf.php?token=' . $token]);

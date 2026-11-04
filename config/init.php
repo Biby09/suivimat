@@ -43,6 +43,11 @@ $mysqlClient->exec("SET time_zone = '+00:00'");
 // Version de l'application, affichée dans les footers (includes/footer.php et includes/app-footer.php)
 const APP_VERSION = '0.0.0';
 
+// Dossier des PDF de codes QR générés (api/organisation/generate-qr-codes.php les écrit, qr-pdf.php les sert).
+// Dans le dossier temporaire du système, hors du site : aucun fichier n'est accessible directement par une adresse.
+// define() et non const : la valeur est calculée par une fonction
+define('QR_PDF_DIRECTORY', sys_get_temp_dir() . '/suivimat-qr-pdf');
+
 /**
  * URL d'un fichier statique (JS, CSS) suivie de sa date de modification : « /scripts/x.js?v=1793800000 ».
  * Le numéro change à chaque modification du fichier, le navigateur ne peut donc pas garder une ancienne version en cache.
