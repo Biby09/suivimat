@@ -1,6 +1,6 @@
 <?php
 /*
-    Carte d'un prêt en cours : photo et nom de l'objet, client, dates, badge d'échéance, bouton « Retour ».
+    Carte d'un prêt en cours : photo et nom de l'objet, client, dates, badge d'échéance, boutons « Contrat » (PDF) et « Retour ».
     Utilisée par la page « Prêts en cours » (dashboard/organisation/loans/) et la page d'un client (dashboard/organisation/clients/client.php).
     Toute la carte mène à la fiche de l'objet ; « Retour » ouvre la fiche avec le dialog de retour (?retour=1).
 
@@ -50,8 +50,13 @@ $search = mb_strtolower($loan->getArticleName() . ' ' . $loan->getArticleCode() 
 
                 <div class="d-flex align-items-center justify-content-between gap-2 mt-2">
                     <span class="badge <?= $due['class'] ?>"><?= $due['label'] ?></span>
-                    <!-- position-relative + z-2 : le bouton passe au-dessus du lien qui couvre la carte -->
-                    <a href="<?= $articleUrl ?>&retour=1" class="btn btn-sm btn-outline-primary position-relative z-2 text-nowrap">Retour</a>
+                    <!-- position-relative + z-2 : les boutons passent au-dessus du lien qui couvre la carte -->
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <!-- Contrat de prêt en PDF, dans un nouvel onglet (api/loan/contract.php) -->
+                        <a href="/api/loan/contract.php?loan_id=<?= $loan->getId() ?>" class="btn btn-sm btn-outline-secondary position-relative z-2 text-nowrap"
+                            target="_blank" rel="noopener">Contrat</a>
+                        <a href="<?= $articleUrl ?>&retour=1" class="btn btn-sm btn-outline-primary position-relative z-2 text-nowrap">Retour</a>
+                    </div>
                 </div>
             </div>
         </div>
