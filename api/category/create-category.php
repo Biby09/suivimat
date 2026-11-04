@@ -1,13 +1,12 @@
 <?php
 // Création d'une catégorie et de ses champs personnalisés
+// POST : organisation_id, name, parent_id (optionnel), fields[i][name] et fields[i][default] (valeur par défaut, optionnelle)
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/category/categoryManager.php';
 
 header('Content-Type: application/json; charset=utf-8');
-
-const MAX_FIELDS = 20;
 
 function sendError(int $status, string $message): void
 {
@@ -23,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $organisationId = filter_input(INPUT_POST, 'organisation_id', FILTER_VALIDATE_INT);
 $name = trim($_POST['name'] ?? '');
 $parentId = ($_POST['parent_id'] ?? '') === '' ? null : filter_input(INPUT_POST, 'parent_id', FILTER_VALIDATE_INT);
-$fieldNames = is_array($_POST['fields'] ?? null) ? $_POST['fields'] : [];
+$rawFields = is_array($_POST['fields'] ?? null) ? $_POST['fields'] : [];
 
 if (!$organisationId) {
     sendError(400, 'ID d\'organisation invalide');
@@ -35,19 +34,12 @@ if ($parentId === false) {
     sendError(400, 'Catégorie parente invalide');
 }
 
-// Champs vides ignorés, doublons refusés
-$fieldNames = array_values(array_filter(array_map(fn($field) => trim((string) $field), $fieldNames), fn($field) => $field !== ''));
-if (count($fieldNames) > MAX_FIELDS) {
-    sendError(400, 'Une catégorie ne peut pas avoir plus de ' . MAX_FIELDS . ' champs personnalisés');
-}
-foreach ($fieldNames as $fieldName) {
-    if (mb_strlen($fieldName) > 45) {
-        sendError(400, 'Le nom d\'un champ ne peut pas dépasser 45 caractères');
-    }
-}
-if (count(array_unique(array_map('mb_strtolower', $fieldNames))) !== count($fieldNames)) {
-    sendError(400, 'Deux champs personnalisés portent le même nom');
-}
+// readCategoryField(), checkCategoryFields() et MAX_FIELDS
+require $_SERVER['DOCUMENT_ROOT'] . '/includes/category-fields.php';
+
+// Champs sans nom ignorés (ligne laissée vide), puis vérification : nombre, longueurs, doublons
+$fields = array_values(array_filter(array_map('readCategoryField', $rawFields), fn($field) => $field['name'] !== ''));
+checkCategoryFields($fields);
 
 try {
     $organisation = $organisationManager->getOrganisationById($organisationId);
@@ -71,7 +63,7 @@ if ($parentId !== null) {
 }
 
 try {
-    $category = $categoryManager->createCategory($name, $parentId, $fieldNames);
+    $category = $categoryManager->createCategory($name, $parentId, $fields);
 } catch (Exception $e) {
     error_log('Création de la catégorie impossible : ' . $e->getMessage());
     sendError(500, 'Erreur lors de la création de la catégorie');

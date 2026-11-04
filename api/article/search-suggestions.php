@@ -53,6 +53,7 @@ echo json_encode([
     'success' => true,
     'categories' => $categoryIds,
     'articles' => array_map(fn(Article $article) => [
+        'id' => $article->getId(), // pour ouvrir la fiche de l'objet
         'code' => $article->getCode(),
         'name' => $article->getName(),
         'category_id' => $article->getCategoryId(),

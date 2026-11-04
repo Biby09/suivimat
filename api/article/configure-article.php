@@ -1,5 +1,6 @@
 <?php
-// Enregistre le nom, la catégorie, les champs personnalisés et les nouvelles photos d'un article
+// Enregistre le nom, la catégorie, les champs personnalisés et les nouvelles photos d'un article,
+// et supprime les photos demandées (delete_photos[] : ID des images, utilisé par la fiche de l'objet)
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
@@ -32,6 +33,7 @@ $code = strtoupper(trim($_POST['code'] ?? ''));
 $name = trim($_POST['name'] ?? '');
 $categoryId = ($_POST['category_id'] ?? '') === '' ? null : filter_input(INPUT_POST, 'category_id', FILTER_VALIDATE_INT);
 $fields = is_array($_POST['fields'] ?? null) ? $_POST['fields'] : [];
+$deletePhotoIds = is_array($_POST['delete_photos'] ?? null) ? $_POST['delete_photos'] : [];
 
 if (!$organisationId || !preg_match('/^[A-Z0-9]{4}$/', $code)) {
     sendError(400, 'Code invalide');
@@ -51,26 +53,10 @@ foreach ($fields as $value) {
 }
 
 // Photos : photos[] (envoi multiple), réduites côté navigateur avant l'envoi
-$photoPaths = [];
-if (isset($_FILES['photos']) && is_array($_FILES['photos']['error'])) {
-    foreach ($_FILES['photos']['error'] as $index => $error) {
-        if ($error === UPLOAD_ERR_NO_FILE) {
-            continue;
-        }
-        if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
-            sendError(413, 'Une photo est trop volumineuse');
-        }
-        if ($error !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['photos']['tmp_name'][$index])) {
-            sendError(400, 'L\'envoi d\'une photo a échoué');
-        }
-        if (!ImageManager::isValidImage($_FILES['photos']['tmp_name'][$index])) {
-            sendError(400, 'Seules les photos JPEG, PNG ou WebP sont acceptées');
-        }
-        $photoPaths[] = $_FILES['photos']['tmp_name'][$index];
-    }
-}
-if (count($photoPaths) > MAX_PHOTOS) {
-    sendError(400, 'Vous pouvez ajouter au maximum ' . MAX_PHOTOS . ' photos à la fois');
+try {
+    $photoPaths = ImageManager::getUploadedPhotos('photos', MAX_PHOTOS);
+} catch (InvalidArgumentException $e) {
+    sendError(400, $e->getMessage());
 }
 
 try {
@@ -101,6 +87,15 @@ try {
 } catch (Exception $e) {
     error_log('Configuration de l\'article impossible : ' . $e->getMessage());
     sendError(500, 'Erreur lors de l\'enregistrement de l\'objet');
+}
+
+if ($deletePhotoIds) {
+    try {
+        (new ImageManager($mysqlClient))->deleteArticleImages($article, $deletePhotoIds);
+    } catch (Exception $e) {
+        error_log('Suppression des photos impossible : ' . $e->getMessage());
+        sendError(500, 'L\'objet est enregistré, mais les photos n\'ont pas pu être supprimées.');
+    }
 }
 
 if ($photoPaths) {

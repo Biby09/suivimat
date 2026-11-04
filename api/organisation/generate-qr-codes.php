@@ -96,9 +96,10 @@ try {
 }
 
 if ($exportType === 'labels') {
-    // Le code QR renvoie vers la fiche de l'article
+    // Le code QR renvoie vers la fiche de l'article (dashboard/organisation/article/index.php), qui le retrouve par son code :
+    // membre de l'organisation → fiche ; objet perdu scanné par quelqu'un d'autre → page pour contacter l'organisation
     $isHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
-    $articleBaseUrl = ($isHttps ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/organisation/article/?code=';
+    $articleBaseUrl = ($isHttps ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/dashboard/organisation/article/?code=';
 
     $pdf = new TCPDF($sheetWidth > $sheetHeight ? 'L' : 'P', 'mm', [$sheetWidth, $sheetHeight], true, 'UTF-8');
     $pdf->setPrintHeader(false);
