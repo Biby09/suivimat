@@ -40,6 +40,51 @@ try {
 date_default_timezone_set('UTC');
 $mysqlClient->exec("SET time_zone = '+00:00'");
 
+// Version de l'application, affichée dans les footers (includes/footer.php et includes/app-footer.php)
+const APP_VERSION = '0.0.0';
+
+/**
+ * URL d'un fichier statique (JS, CSS) suivie de sa date de modification : « /scripts/x.js?v=1793800000 ».
+ * Le numéro change à chaque modification du fichier, le navigateur ne peut donc pas garder une ancienne version en cache.
+ * Utilisation : <script src="<?= asset('/scripts/x.js') ?>" defer></script>
+ */
+function asset(string $path): string
+{
+    return $path . '?v=' . filemtime($_SERVER['DOCUMENT_ROOT'] . $path);
+}
+
+/**
+ * Date reçue d'un formulaire (<input type="date"> : AAAA-MM-JJ) : renvoyée telle quelle si elle existe,
+ * null sinon (« 2026-02-30 », « demain », texte vide…).
+ */
+function parseDate(string $text): ?string
+{
+    // « ! » : les parties absentes (heure) valent 0 ; la date relue doit être identique (PHP changerait le 30 février en 2 mars)
+    $date = DateTime::createFromFormat('!Y-m-d', $text);
+    return $date && $date->format('Y-m-d') === $text ? $text : null;
+}
+
+/**
+ * Envoie un e-mail en texte brut (UTF-8). $replyTo : adresse à laquelle « Répondre » écrira.
+ * En local (localhost), l'e-mail n'est PAS envoyé : il est écrit dans le journal d'erreurs de PHP (error_log),
+ * pour tester sans écrire à de vraies personnes. Renvoie true si l'envoi (ou l'écriture locale) a réussi.
+ */
+function sendMail(string $to, string $subject, string $body, ?string $replyTo = null): bool
+{
+    // Retours à la ligne interdits dans les en-têtes : sinon on pourrait y injecter d'autres destinataires
+    $replyTo = $replyTo !== null ? str_replace(["\r", "\n"], '', $replyTo) : null;
+    $headers = "Content-Type: text/plain; charset=UTF-8\r\n" . ($replyTo ? "Reply-To: $replyTo\r\n" : '');
+    // Sujet encodé (=?UTF-8?B?…?=) : les accents s'affichent correctement dans les messageries
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+
+    if (in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'], true)) {
+        error_log("[sendMail local, non envoyé] À : $to | Sujet : $subject | Répondre à : $replyTo\n$body");
+        return true;
+    }
+
+    return mail($to, $encodedSubject, $body, $headers);
+}
+
 // Initialisation des managers principaux
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/user/userManager.php';
 $userManager = new UserManager($mysqlClient);

@@ -62,34 +62,105 @@ class ImageManager{
     }
 
     /**
-     * Ajoute des photos à un article. Tout ou rien : en cas d'erreur, aucun fichier ni aucune ligne n'est conservé.
-     * $paths : fichiers temporaires déjà validés avec isValidImage().
+     * Photos envoyées dans le champ $_FILES[$field] (envoi multiple « photos[] »), vérifiées :
+     * renvoie les chemins des fichiers temporaires, ou lève une InvalidArgumentException dont le message
+     * peut être affiché tel quel (photo trop lourde, pas une image, trop de photos…).
+     */
+    public static function getUploadedPhotos(string $field, int $max): array
+    {
+        $files = $_FILES[$field] ?? null;
+        if (!$files || !is_array($files['error'])) {
+            return [];
+        }
+
+        $paths = [];
+        foreach ($files['error'] as $index => $error) {
+            if ($error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+                throw new InvalidArgumentException('Une photo est trop volumineuse');
+            }
+            if ($error !== UPLOAD_ERR_OK || !is_uploaded_file($files['tmp_name'][$index])) {
+                throw new InvalidArgumentException('L\'envoi d\'une photo a échoué');
+            }
+            if (!self::isValidImage($files['tmp_name'][$index])) {
+                throw new InvalidArgumentException('Seules les photos JPEG, PNG ou WebP sont acceptées');
+            }
+            $paths[] = $files['tmp_name'][$index];
+        }
+
+        if (count($paths) > $max) {
+            throw new InvalidArgumentException('Vous pouvez ajouter au maximum ' . $max . ' photos à la fois');
+        }
+        return $paths;
+    }
+
+    /**
+     * Ajoute des photos à un article, ou à un dégât de cet article si $damageId est donné.
+     * Tout ou rien : en cas d'erreur, aucun fichier ni aucune ligne n'est conservé.
+     * Si une transaction est déjà ouverte (ex. retour d'un prêt avec dégât), elle est utilisée : l'appelant valide ou annule.
+     * $paths : fichiers temporaires déjà validés (getUploadedPhotos() ou isValidImage()).
      * Chaque image est ré-encodée en JPEG (supprime les métadonnées, dont la position GPS) et réduite si besoin.
      */
-    public function addArticleImages(Article $article, array $paths): void
+    public function addArticleImages(Article $article, array $paths, ?int $damageId = null): void
     {
         $written = [];
-
-        $this->pdo->beginTransaction();
+        $ownTransaction = !$this->pdo->inTransaction();
+        if ($ownTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO images (im_name, idx_article, idx_degat) VALUES (:name, :article, NULL)');
+            $stmt = $this->pdo->prepare('INSERT INTO images (im_name, idx_article, idx_degat) VALUES (:name, :article, :degat)');
             foreach ($paths as $path) {
                 $name = self::uuid();
                 $destination = $_SERVER['DOCUMENT_ROOT'] . self::UPLOAD_DIR . '/' . $name . '.jpg';
 
                 self::saveAsJpeg($path, $destination);
                 $written[] = $destination;
-                $stmt->execute(['name' => $name, 'article' => $article->getId()]);
+                $stmt->execute(['name' => $name, 'article' => $article->getId(), 'degat' => $damageId]);
             }
 
-            $this->pdo->commit();
+            if ($ownTransaction) {
+                $this->pdo->commit();
+            }
         } catch (Exception $exception) {
-            $this->pdo->rollBack();
+            if ($ownTransaction) {
+                $this->pdo->rollBack();
+            }
             foreach ($written as $file) {
                 @unlink($file);
             }
             throw $exception;
+        }
+    }
+
+    /**
+     * Supprime des photos d'un article (lignes + fichiers). Les ID qui ne sont pas des photos de cet article
+     * (autre article, photo de dégât) sont ignorés : on ne peut pas supprimer la photo d'un autre en trichant sur l'ID.
+     */
+    public function deleteArticleImages(Article $article, array $imageIds): void
+    {
+        $imageIds = array_values(array_unique(array_map('intval', $imageIds)));
+        if (!$imageIds) {
+            return;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($imageIds), '?'));
+        $where = "idx_article = ? AND idx_degat IS NULL AND id_image IN ($placeholders)";
+        // ...[a, b] (spread) : l'ID de l'article puis tous les ID d'images, dans l'ordre des « ? »
+        $params = [$article->getId(), ...$imageIds];
+
+        $stmt = $this->pdo->prepare("SELECT im_name FROM images WHERE $where");
+        $stmt->execute($params);
+        $names = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $this->pdo->prepare("DELETE FROM images WHERE $where")->execute($params);
+
+        // Fichiers supprimés après les lignes : au pire un fichier orphelin, jamais une ligne sans fichier
+        foreach ($names as $name) {
+            @unlink($_SERVER['DOCUMENT_ROOT'] . self::UPLOAD_DIR . '/' . $name . '.jpg');
         }
     }
 

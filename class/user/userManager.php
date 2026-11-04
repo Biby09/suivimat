@@ -26,6 +26,19 @@ class UserManager{
         }
     }
 
+    /**
+     * Adresses e-mail des membres d'une organisation (ex. message de la personne qui a trouvé un objet perdu)
+     */
+    public function getEmailsOfOrganisation(int $organisationId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT users.usr_email FROM users
+            JOIN users_organisations ON users_organisations.idx_user = users.id_user
+            WHERE users_organisations.idx_organisation = :organisation');
+        $stmt->execute(['organisation' => $organisationId]);
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     public function getUserByEmail(string $email): User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE usr_email = :email');

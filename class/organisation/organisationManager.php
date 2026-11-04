@@ -28,6 +28,49 @@ class OrganisationManager{
         }
     }
 
+    /**
+     * Organisation à laquelle appartient l'article de ce code, SANS vérifier que l'utilisateur en est membre
+     * (null si le code n'existe pas). Pour les codes QR scannés par n'importe qui (fiche d'un objet perdu).
+     * static : s'appelle sans utilisateur connecté, OrganisationManager::findByArticleCode($pdo, $code)
+     */
+    public static function findByArticleCode(PDO $pdo, string $code): ?Organisation
+    {
+        $stmt = $pdo->prepare('SELECT id_organisation, org_name FROM organisations
+            JOIN articles ON articles.idx_organisation = organisations.id_organisation
+            WHERE articles.art_code = :code');
+        $stmt->execute(['code' => $code]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$ligne) {
+            return null;
+        }
+        $organisation = new Organisation();
+        $organisation->hydrate($ligne);
+        return $organisation;
+    }
+
+    /**
+     * Organisation à laquelle appartient un article, seulement si l'utilisateur en est membre
+     * (sinon exception : on ne révèle pas l'existence d'un article d'une autre organisation).
+     */
+    public function getOrganisationOfArticle(int $articleId): Organisation
+    {
+        $stmt = $this->pdo->prepare('SELECT id_organisation, org_name FROM organisations
+            JOIN articles ON articles.idx_organisation = organisations.id_organisation
+            JOIN users_organisations ON users_organisations.idx_organisation = organisations.id_organisation
+            WHERE articles.id_article = :article AND users_organisations.idx_user = :user_id');
+        $stmt->execute(['article' => $articleId, 'user_id' => $this->user->getId()]);
+        $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$ligne) {
+            throw new Exception("Organisation not found for article ID: " . $articleId);
+        }
+
+        $organisation = new Organisation();
+        $organisation->hydrate($ligne);
+        return $organisation;
+    }
+
     public function getAllOrganisationsForUser(): array
     {
         $stmt = $this->pdo->prepare('SELECT id_organisation, org_name FROM organisations JOIN users_organisations ON organisations.id_organisation = users_organisations.idx_organisation WHERE users_organisations.idx_user = :user_id ORDER BY org_last_open DESC');

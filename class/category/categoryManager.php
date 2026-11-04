@@ -27,6 +27,24 @@ class CategoryManager{
         }
     }
 
+    /**
+     * Catégorie et ses parentes, de la racine à la catégorie : [Parent, Enfant] (chemin d'accès)
+     */
+    public function getCategoryPath(int $id): array
+    {
+        $path = [];
+        $currentId = $id;
+
+        // Garde-fou : une boucle dans les parentes (A parente de B, B parente de A) ne bloque pas la page
+        while ($currentId !== null && count($path) < 20) {
+            $category = $this->getCategoryById($currentId);
+            array_unshift($path, $category); // ajoute au DÉBUT du tableau : la racine finit en premier
+            $currentId = $category->getParentId();
+        }
+
+        return $path;
+    }
+
     public function getAllCategories(): array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM categories WHERE idx_organisation = :organisation ORDER BY cat_name');
@@ -110,10 +128,11 @@ class CategoryManager{
 
     /**
      * Modifie une catégorie et ses champs personnalisés. Tout ou rien.
-     * $fields : champs conservés [id_champ => nouveau nom] ; les champs absents sont supprimés avec leurs valeurs.
-     * $newFieldNames : champs à ajouter.
+     * $fields : champs conservés [id_champ => ['name' => nom, 'default' => valeur par défaut ou null]] ;
+     *           les champs absents sont supprimés avec leurs valeurs.
+     * $newFields : champs à ajouter [['name' => …, 'default' => …], …].
      */
-    public function updateCategory(int $id, string $name, ?int $parentId, array $fields, array $newFieldNames): Category
+    public function updateCategory(int $id, string $name, ?int $parentId, array $fields, array $newFields): Category
     {
         $this->pdo->beginTransaction();
 
@@ -132,15 +151,12 @@ class CategoryManager{
                 $deleteField->execute(['field' => $fieldId, 'category' => $id]);
             }
 
-            $stmt = $this->pdo->prepare('UPDATE additional_fields SET ad_name = :name WHERE id_af = :field AND idx_category = :category');
-            foreach ($fields as $fieldId => $fieldName) {
-                $stmt->execute(['name' => $fieldName, 'field' => $fieldId, 'category' => $id]);
+            $stmt = $this->pdo->prepare('UPDATE additional_fields SET ad_name = :name, ad_default = :default WHERE id_af = :field AND idx_category = :category');
+            foreach ($fields as $fieldId => $field) {
+                $stmt->execute(['name' => $field['name'], 'default' => $field['default'], 'field' => $fieldId, 'category' => $id]);
             }
 
-            $stmt = $this->pdo->prepare('INSERT INTO additional_fields (ad_name, idx_category) VALUES (:name, :category)');
-            foreach ($newFieldNames as $fieldName) {
-                $stmt->execute(['name' => $fieldName, 'category' => $id]);
-            }
+            $this->insertFields($id, $newFields);
 
             $this->pdo->commit();
         } catch (Exception $exception) {
@@ -178,8 +194,9 @@ class CategoryManager{
 
     /**
      * Crée une catégorie et ses champs personnalisés. Tout ou rien.
+     * $fields : [['name' => nom, 'default' => valeur par défaut ou null], …]
      */
-    public function createCategory(string $name, ?int $parentId, array $fieldNames): Category
+    public function createCategory(string $name, ?int $parentId, array $fields): Category
     {
         $this->pdo->beginTransaction();
 
@@ -188,10 +205,7 @@ class CategoryManager{
             $stmt->execute(['organisation' => $this->organisation->getId(), 'name' => $name, 'parent' => $parentId]);
             $categoryId = (int) $this->pdo->lastInsertId();
 
-            $stmt = $this->pdo->prepare('INSERT INTO additional_fields (ad_name, idx_category) VALUES (:name, :category)');
-            foreach ($fieldNames as $fieldName) {
-                $stmt->execute(['name' => $fieldName, 'category' => $categoryId]);
-            }
+            $this->insertFields($categoryId, $fields);
 
             $this->pdo->commit();
         } catch (Exception $exception) {
@@ -202,18 +216,27 @@ class CategoryManager{
         return $this->getCategoryById($categoryId);
     }
 
+    // Ajoute des champs personnalisés à une catégorie (appelé dans la transaction de createCategory / updateCategory)
+    private function insertFields(int $categoryId, array $fields): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO additional_fields (ad_name, ad_default, idx_category) VALUES (:name, :default, :category)');
+        foreach ($fields as $field) {
+            $stmt->execute(['name' => $field['name'], 'default' => $field['default'], 'category' => $categoryId]);
+        }
+    }
+
     /**
      * Champs personnalisés des catégories de l'organisation, groupés par catégorie :
-     * [id_catégorie => [['id' => ..., 'name' => ...], ...]]
+     * [id_catégorie => [['id' => ..., 'name' => ..., 'default' => valeur par défaut ou null], ...]]
      */
     public function getAdditionalFieldsByCategory(): array
     {
-        $stmt = $this->pdo->prepare('SELECT additional_fields.id_af, additional_fields.ad_name, additional_fields.idx_category FROM additional_fields JOIN categories ON categories.id_category = additional_fields.idx_category WHERE categories.idx_organisation = :organisation ORDER BY additional_fields.id_af');
+        $stmt = $this->pdo->prepare('SELECT additional_fields.id_af, additional_fields.ad_name, additional_fields.ad_default, additional_fields.idx_category FROM additional_fields JOIN categories ON categories.id_category = additional_fields.idx_category WHERE categories.idx_organisation = :organisation ORDER BY additional_fields.id_af');
         $stmt->execute(['organisation' => $this->organisation->getId()]);
         $fields = [];
 
         while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $fields[(int) $ligne['idx_category']][] = ['id' => (int) $ligne['id_af'], 'name' => $ligne['ad_name']];
+            $fields[(int) $ligne['idx_category']][] = ['id' => (int) $ligne['id_af'], 'name' => $ligne['ad_name'], 'default' => $ligne['ad_default']];
         }
 
         return $fields;

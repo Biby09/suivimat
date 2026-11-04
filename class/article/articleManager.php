@@ -12,6 +12,14 @@ class ArticleManager
         'perdu' => 'Perdu',
     ];
 
+    // Couleur Bootstrap du badge de chaque statut (mêmes couleurs que scripts/organisation-articles.js)
+    public const STATUS_BADGES = [
+        'Disponible' => 'text-bg-success',
+        'Emprunté' => 'text-bg-warning',
+        'Vendu' => 'text-bg-dark',
+        'Perdu' => 'text-bg-danger',
+    ];
+
     private PDO $pdo;
     private Organisation $organisation;
 
@@ -144,6 +152,46 @@ class ArticleManager
     }
 
     /**
+     * Champs personnalisés à afficher sur la fiche d'un article : ceux de sa catégorie et des catégories parentes
+     * (champs hérités, ceux de la racine en premier), avec la valeur de l'article ou, à défaut, la valeur par défaut
+     * du champ. Les champs sans valeur ni valeur par défaut ne sont pas renvoyés.
+     * [['name' => nom du champ, 'value' => valeur affichée, 'isDefault' => true si c'est la valeur par défaut], ...]
+     */
+    public function getDisplayedFields(Article $article): array
+    {
+        if ($article->getCategoryId() === null) {
+            return [];
+        }
+
+        // [Igloo, Tentes] → [Tentes, Igloo] : la racine d'abord
+        $categoryIds = array_reverse($this->categoryWithParents($article->getCategoryId()));
+        $placeholders = implode(', ', array_fill(0, count($categoryIds), '?'));
+
+        // LEFT JOIN : tous les champs, même ceux que l'article n'a pas remplis (afv_value vaut alors NULL)
+        // FIELD(x, a, b, c) : position de x dans la liste (1, 2, 3…) → tri dans l'ordre des catégories, de la racine à l'enfant
+        $stmt = $this->pdo->prepare("SELECT additional_fields.ad_name AS name, additional_fields.ad_default AS default_value,
+                additional_fields_value.afv_value AS value
+            FROM additional_fields
+            LEFT JOIN additional_fields_value
+                ON additional_fields_value.idx_additional_fields = additional_fields.id_af AND additional_fields_value.idx_article = ?
+            WHERE additional_fields.idx_category IN ($placeholders)
+            ORDER BY FIELD(additional_fields.idx_category, $placeholders), additional_fields.id_af");
+        // Les « ? » dans l'ordre : l'article, les catégories (IN), puis les catégories à nouveau (FIELD)
+        $stmt->execute([$article->getId(), ...$categoryIds, ...$categoryIds]);
+
+        $fields = [];
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($ligne['value'] !== null) {
+                $fields[] = ['name' => $ligne['name'], 'value' => $ligne['value'], 'isDefault' => false];
+            } elseif ($ligne['default_value'] !== null) {
+                $fields[] = ['name' => $ligne['name'], 'value' => $ligne['default_value'], 'isDefault' => true];
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
      * Valeurs des champs personnalisés d'un article : [id_champ => valeur]
      */
     public function getAdditionalFieldValues(Article $article): array
@@ -155,16 +203,39 @@ class ArticleManager
     }
 
     /**
+     * ID de la catégorie et de toutes ses parentes (de l'organisation) : [Igloo, Tentes]
+     */
+    private function categoryWithParents(int $categoryId): array
+    {
+        $stmt = $this->pdo->prepare('SELECT idx_cat_parent FROM categories WHERE id_category = :id AND idx_organisation = :organisation');
+        $ids = [];
+        $id = $categoryId;
+
+        // in_array : garde-fou contre une boucle dans les parentes
+        while ($id !== null && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+            $stmt->execute(['id' => $id, 'organisation' => $this->organisation->getId()]);
+            $parent = $stmt->fetchColumn(); // false : catégorie introuvable ; null : pas de parente
+            $id = $parent === false || $parent === null ? null : (int) $parent;
+        }
+
+        return $ids;
+    }
+
+    /**
      * Enregistre le nom, la catégorie et les champs personnalisés d'un article.
-     * $fields : [id_champ => valeur] ; seuls les champs de la catégorie choisie sont conservés.
+     * $fields : [id_champ => valeur] ; seuls les champs de la catégorie choisie et de ses catégories parentes
+     * (champs hérités) sont conservés.
      * Un article « Non attribué » passe à « Disponible ».
      */
     public function configureArticle(Article $article, string $name, ?int $categoryId, array $fields): void
     {
         $allowedFields = [];
         if ($categoryId !== null) {
-            $stmt = $this->pdo->prepare('SELECT id_af FROM additional_fields WHERE idx_category = :category');
-            $stmt->execute(['category' => $categoryId]);
+            $categoryIds = $this->categoryWithParents($categoryId);
+            $placeholders = implode(', ', array_fill(0, count($categoryIds), '?'));
+            $stmt = $this->pdo->prepare("SELECT id_af FROM additional_fields WHERE idx_category IN ($placeholders)");
+            $stmt->execute($categoryIds);
             $allowedFields = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
         }
 
