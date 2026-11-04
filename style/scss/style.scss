@@ -256,3 +256,12 @@ footer{
 .organisation-results {
     scroll-margin-top: calc(#{$header-height} + #{map-get($spacers, 3)});
 }
+
+//Ombre des cartes sur l'index des organisations (dashboard/organisation/index.php)
+.shadow-hover{
+    transition : box-shadow 0.1s ease-in-out;
+}
+
+.shadow-hover:hover{
+    box-shadow: var(--bs-box-shadow);
+}

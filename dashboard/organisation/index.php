@@ -53,7 +53,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 
                 <form class="mb-3" role="search" data-role="search-form">
                     <label for="organisation-search" class="visually-hidden">Rechercher un objet, un code ou une catégorie (Entrée pour valider)</label>
-                    <div class="input-group">
+                    <div class="input-group flex-nowrap">
                         <!-- Propositions pendant la saisie : modèle « combobox » ARIA, liste sous le champ -->
                         <div class="position-relative flex-grow-1">
                             <input type="search" class="form-control rounded-end-0" id="organisation-search" name="q" placeholder="Rechercher…" autocomplete="off"

@@ -186,7 +186,7 @@
         col.className = "col";
 
         const card = document.createElement("article");
-        card.className = "card h-100";
+        card.className = "card h-100 shadow-hover";
 
         const picture = document.createElement("div");
         picture.className = "ratio ratio-4x3 bg-light rounded-top overflow-hidden";
@@ -225,6 +225,12 @@
         body.append(name, category, footer);
         card.append(picture, body);
         col.appendChild(card);
+        
+
+        col.addEventListener("click", () => {
+            window.location.href = `/dashboard/organisation/article.php?article_id=${encodeURIComponent(article.id)}`;
+        });
+
         return col;
     }
 
@@ -316,7 +322,11 @@
         renderCategories();
 
         articleList.innerHTML = "";
+
+         // Rendre la page avec les articles
         data.articles.forEach((article) => articleList.appendChild(articleCard(article)));
+
+        // Rendre la pagination avec les numéros de page
         renderPagination(data.page, data.pages);
 
         const hasArticles = countIn(ALL) > 0;
