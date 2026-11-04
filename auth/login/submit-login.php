@@ -28,16 +28,24 @@ if (!$email || empty($password)) {
     exit;
 }
 
-$user = $userManager->getUserByEmail($email);
+// Adresse inconnue ou mauvais mot de passe : même message, pour ne pas révéler quelles adresses ont un compte
+try {
+    $user = $userManager->getUserByEmail($email);
+} catch (Exception $e) {
+    $user = null;
+}
 
-if (! $user->passwordVerify($password)) {
+if ($user === null || !$user->passwordVerify($password)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Email ou mot de passe incorrect']);
     exit;
 }
 
+// Nouvel identifiant de session à la connexion : un identifiant connu d'avance (fixation de session) ne sert à rien
+session_regenerate_id(true);
 $_SESSION['user_id'] = $user->getId();
 
 header('Content-Type: application/json');
-echo json_encode(['success' => true, 'message' => 'Connexion réussie', 'redirect' => $_GET['redirect'] ?? '/dashboard']);
+// Page demandée avant la connexion (champ caché « redirect » du formulaire), si elle est interne au site (config/init.php)
+echo json_encode(['success' => true, 'message' => 'Connexion réussie', 'redirect' => safeRedirect($_POST['redirect'] ?? null)]);
 exit;

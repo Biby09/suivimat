@@ -1,8 +1,11 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 
+// Page demandée avant la connexion (?redirect=…, ajouté par config/auth.php), seulement si elle est interne au site
+$redirect = safeRedirect($_GET['redirect'] ?? null);
+
 if (isset($_SESSION['user_id'])) {
-    header('Location: /dashboard');
+    header('Location: ' . $redirect);
     exit();
 }
 $page_description = "Connectez-vous à votre compte SuiviMat pour gérer votre matériel et vos prêts.";
@@ -24,6 +27,8 @@ $page_title = "Connexion - SuiviMat";
                     <h2 class="text-center mb-4">Connexion</h2>
                     <div id="formMessage"></div>
                     <form id="loginForm">
+                        <!-- Envoyé avec l'e-mail et le mot de passe : submit-login.php renvoie ensuite vers cette page -->
+                        <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>">
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" name="email" id="email" placeholder="Votre adresse email" required>
