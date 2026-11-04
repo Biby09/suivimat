@@ -54,6 +54,27 @@ function asset(string $path): string
 }
 
 /**
+ * Adresse où renvoyer après la connexion (?redirect=…), seulement si elle est interne au site :
+ * « /dashboard/account/ » est acceptée ; « https://autre-site.com », « //autre-site.com » ou « /\autre-site.com »
+ * sont refusées (sinon un lien piégé pourrait renvoyer vers un faux site juste après la connexion).
+ */
+function safeRedirect(?string $path, string $default = '/dashboard'): string
+{
+    $path = (string) $path;
+    // Doit commencer par un seul « / » (chemin du site) : « // » et « /\ » mènent vers un autre domaine
+    $isInternal = str_starts_with($path, '/') && !str_starts_with($path, '//') && !str_starts_with($path, '/\\');
+    return $isInternal ? $path : $default;
+}
+
+/**
+ * Date de la base (« 2026-11-04 » ou « 2026-11-04 15:30:00 ») au format suisse : « 04.11.2026 »
+ */
+function formatDate(string $date): string
+{
+    return date('d.m.Y', strtotime($date));
+}
+
+/**
  * Date reçue d'un formulaire (<input type="date"> : AAAA-MM-JJ) : renvoyée telle quelle si elle existe,
  * null sinon (« 2026-02-30 », « demain », texte vide…).
  */
@@ -62,6 +83,20 @@ function parseDate(string $text): ?string
     // « ! » : les parties absentes (heure) valent 0 ; la date relue doit être identique (PHP changerait le 30 février en 2 mars)
     $date = DateTime::createFromFormat('!Y-m-d', $text);
     return $date && $date->format('Y-m-d') === $text ? $text : null;
+}
+
+/**
+ * Adresse e-mail facultative reçue d'un formulaire (ex. e-mail d'un client) :
+ * null si le champ est vide, l'adresse si elle est valide (100 caractères au plus), false si elle est invalide.
+ * string|false|null : type « union », la fonction peut renvoyer l'un de ces trois types.
+ */
+function parseOptionalEmail(string $text): string|false|null
+{
+    $text = trim($text);
+    if ($text === '') {
+        return null;
+    }
+    return mb_strlen($text) <= 100 ? filter_var($text, FILTER_VALIDATE_EMAIL) : false;
 }
 
 /**

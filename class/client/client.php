@@ -3,6 +3,7 @@ class Client{
     private $id;
     private $firstname;
     private $lastname;
+    private ?string $email; // optionnel
     private $organisationId;
 
     public function hydrate(array $ligne): void
@@ -10,6 +11,7 @@ class Client{
         $this->id = (int) $ligne['id_client'];
         $this->firstname = $ligne['cli_firstname'];
         $this->lastname = $ligne['cli_lastname'];
+        $this->email = $ligne['cli_email'] ?? null;
         $this->organisationId = (int) $ligne['idx_organisation'];
     }
 
@@ -26,6 +28,11 @@ class Client{
     public function getLastname(): string
     {
         return $this->lastname;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
     }
 
     public function getFullname(): string

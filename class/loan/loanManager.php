@@ -22,8 +22,8 @@ class LoanManager
     private PDO $pdo;
     private Organisation $organisation;
 
-    // Colonnes lues pour un prêt : celles du prêt + le nom du client
-    private const SELECT_LOANS = 'SELECT loans.*, clients.cli_firstname, clients.cli_lastname
+    // Colonnes lues pour un prêt : celles du prêt + le nom du client + le nom et le code de l'objet
+    private const SELECT_LOANS = 'SELECT loans.*, clients.cli_firstname, clients.cli_lastname, articles.art_name, articles.art_code
         FROM loans
         JOIN articles ON articles.id_article = loans.idx_article
         JOIN clients ON clients.id_client = loans.idx_client';
@@ -92,9 +92,58 @@ class LoanManager
      */
     public function updateLoan(Loan $loan, Client $client, string $startDate, ?string $dueDate): void
     {
-        $stmt = $this->pdo->prepare('UPDATE loans SET idx_client = :client, lo_start_date = :start, lo_due_date = :due
+        // Date de retour prévue changée (ex. prolongation) : le rappel au client pourra être renvoyé avant la nouvelle date.
+        // <=> : égalité qui fonctionne aussi avec NULL (NULL <=> NULL est vrai, NULL = NULL ne l'est pas).
+        // MySQL applique le SET de gauche à droite : le rappel est remis à zéro AVANT que lo_due_date ne change.
+        $stmt = $this->pdo->prepare('UPDATE loans SET lo_reminder_sent_at = IF(lo_due_date <=> :due_check, lo_reminder_sent_at, NULL),
+                idx_client = :client, lo_start_date = :start, lo_due_date = :due
             WHERE id_loan = :loan AND lo_end_date IS NULL');
-        $stmt->execute(['client' => $client->getId(), 'start' => $startDate, 'due' => $dueDate, 'loan' => $loan->getId()]);
+        $stmt->execute(['due_check' => $dueDate, 'client' => $client->getId(), 'start' => $startDate, 'due' => $dueDate, 'loan' => $loan->getId()]);
+    }
+
+    /**
+     * Tous les prêts en cours de l'organisation (page « Prêts en cours »), du retour prévu le plus proche au plus lointain,
+     * puis ceux sans date de retour (les plus anciens d'abord).
+     */
+    public function getOngoingLoans(): array
+    {
+        // « lo_due_date IS NULL » vaut 0 ou 1 : trié en premier, il place les prêts sans date à la fin
+        $stmt = $this->pdo->prepare(self::SELECT_LOANS . ' WHERE articles.idx_organisation = :organisation AND loans.lo_end_date IS NULL
+            ORDER BY loans.lo_due_date IS NULL, loans.lo_due_date, loans.lo_start_date, loans.id_loan');
+        $stmt->execute(['organisation' => $this->organisation->getId()]);
+        $loans = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $loan = new Loan();
+            $loan->hydrate($ligne);
+            $loans[] = $loan;
+        }
+
+        return $loans;
+    }
+
+    /**
+     * Prêts d'un client (page d'un client) : en cours d'abord (retour prévu le plus proche en premier),
+     * puis terminés, du plus récent au plus ancien ; avec leurs dégâts.
+     */
+    public function getLoansForClient(Client $client): array
+    {
+        // 1. lo_end_date IS NOT NULL vaut 0 pour un prêt en cours : en cours d'abord
+        // 2. terminés : retour réel le plus récent d'abord (pour les prêts en cours, lo_end_date est NULL partout : sans effet)
+        // 3. en cours : retour prévu le plus proche d'abord, sans date à la fin
+        $stmt = $this->pdo->prepare(self::SELECT_LOANS . ' WHERE loans.idx_client = :client AND articles.idx_organisation = :organisation
+            ORDER BY loans.lo_end_date IS NOT NULL, loans.lo_end_date DESC, loans.lo_due_date IS NULL, loans.lo_due_date, loans.lo_start_date DESC, loans.id_loan DESC');
+        $stmt->execute(['client' => $client->getId(), 'organisation' => $this->organisation->getId()]);
+        $loans = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $loan = new Loan();
+            $loan->hydrate($ligne);
+            $loans[] = $loan;
+        }
+
+        $this->attachDamages($loans);
+        return $loans;
     }
 
     /**
