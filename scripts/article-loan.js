@@ -33,13 +33,17 @@
         message.appendChild(alert);
     }
 
-    // Date du jour de l'appareil au format AAAA-MM-JJ (celui des <input type="date">).
+    // Date du jour de l'appareil + `days` jours, au format AAAA-MM-JJ (celui des <input type="date">).
     // toISOString() donnerait la date en UTC : la veille entre minuit et 1-2 h du matin en Suisse.
-    function today() {
-        const now = new Date();
+    function today(days = 0) {
+        const date = new Date();
+        date.setDate(date.getDate() + days); // le 30 + 5 jours passe correctement au mois suivant
         // padStart(2, "0") : « 4 » → « 04 » ; getMonth() commence à 0 (janvier = 0)
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
+
+    // Durée de prêt par défaut de l'organisation (Paramètres › Prêts) ; 0 = indéterminée
+    const defaultDays = parseInt(form.dataset.defaultDays) || 0;
 
     // Retour indéterminé : champ date vidé et désactivé (un champ désactivé n'est pas envoyé avec le formulaire)
     function updateDueDate() {
@@ -76,7 +80,9 @@
         } else {
             clientPicker.select(""); // aucun client choisi (« + Nouveau client » s'il n'y en a aucun)
             startInput.value = today();
-            dueUnknown.checked = true;
+            // Durée par défaut : retour prévu pré-rempli (aujourd'hui + N jours) ; sinon « indéterminée »
+            dueUnknown.checked = defaultDays === 0;
+            dueInput.value = defaultDays ? today(defaultDays) : "";
         }
         updateDueDate();
     }

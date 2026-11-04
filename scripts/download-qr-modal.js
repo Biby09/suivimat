@@ -11,7 +11,12 @@
     const rows = document.getElementById("label-rows");
     const objectCount = document.getElementById("object-count");
     const objectCountHelp = document.getElementById("object-count-help");
+    const newCodesSettings = document.getElementById("new-codes-settings");
+    const reprintSettings = document.getElementById("reprint-settings");
+    const reprintCodes = document.getElementById("reprint-codes");
     const MAX_OBJECTS = 1000;
+
+    const isReprint = () => form.elements["mode"].value === "reprint";
 
     const isLabelsExport = () => form.elements["export_type"].value === "labels";
     const labelsPerSheet = () => Math.max(1, parseInt(columns.value) || 1) * Math.max(1, parseInt(rows.value) || 1);
@@ -60,6 +65,18 @@
         updateObjectCount();
     }
 
+    // Nouveaux codes ↔ réimpression : le nombre d'objets n'a de sens que pour de nouveaux codes ;
+    // en réimpression, la liste des codes n'est obligatoire que si « Ces codes » est choisi
+    function updateMode() {
+        const reprint = isReprint();
+        newCodesSettings.hidden = reprint;
+        objectCount.disabled = reprint; // champ désactivé : ni validé ni envoyé
+        reprintSettings.hidden = !reprint;
+        reprintCodes.required = reprint && form.elements["reprint_scope"].value === "codes";
+        reprintCodes.disabled = !reprint || form.elements["reprint_scope"].value !== "codes";
+    }
+
+    form.querySelectorAll("input[name='mode'], input[name='reprint_scope']").forEach((radio) => radio.addEventListener("change", updateMode));
     form.querySelectorAll("input[name='export_type']").forEach((radio) => radio.addEventListener("change", updateExportType));
     sheetFormat.addEventListener("change", updateSheetFormat);
     columns.addEventListener("change", updateObjectCount);
@@ -68,6 +85,17 @@
 
     // Génération asynchrone : erreurs affichées dans le modal, PDF ouvert dans un nouvel onglet
     const modal = document.getElementById("download-qr-modal");
+
+    // Bouton avec data-reprint-code (ex. « Réimprimer l'étiquette » de la fiche d'un objet) : réimpression de ce code ;
+    // tout autre bouton : nouveaux codes. e.relatedTarget = bouton qui a ouvert le dialog
+    modal.addEventListener("show.bs.modal", (e) => {
+        const code = e.relatedTarget?.dataset.reprintCode;
+        form.elements["mode"].value = code ? "reprint" : "new";
+        form.elements["reprint_scope"].value = "codes";
+        reprintCodes.value = code ?? "";
+        message.innerHTML = "";
+        updateMode();
+    });
     const message = document.getElementById("download-qr-message");
     const submitButton = document.getElementById("download-qr-submit");
     let pdfUrl = null;
@@ -101,6 +129,9 @@
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (!form.reportValidity()) {
+            return; // ex. réimpression sans code : le navigateur indique le champ à remplir
+        }
 
         // L'onglet est ouvert tout de suite, pendant le clic : ouvert après l'attente, il serait bloqué comme pop-up
         const pdfTab = window.open("", "_blank");
@@ -148,4 +179,5 @@
 
     updateSheetFormat();
     updateExportType();
+    updateMode();
 })();

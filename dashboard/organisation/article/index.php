@@ -64,7 +64,8 @@ if ($code !== '') {
     }
 
     if (!$isMember) {
-        if ($article->getStatus() === 'Perdu') {
+        // Page publique seulement si l'organisation l'a laissée activée (Paramètres › Objets perdus) ; sinon : connexion
+        if ($article->getStatus() === 'Perdu' && $codeOrganisation->isLostPageEnabled()) {
             // Page publique : nom et photo de l'objet, formulaire pour écrire à l'organisation
             $organisation = $codeOrganisation;
             require $_SERVER['DOCUMENT_ROOT'] . '/includes/lost-article-public.php';
@@ -157,18 +158,14 @@ $inventoryUrl = '/dashboard/organisation/?id=' . $organisation->getId();
 // « Câbles › Jack » ; array_map applique la fonction à chaque catégorie et renvoie le tableau des noms
 $categoryLabel = $categoryPath ? implode(' › ', array_map(fn(Category $category) => $category->getName(), $categoryPath)) : 'Sans catégorie';
 
-// « 2026-11-04 » ou « 2026-11-04 15:30:00 » → « 04.11.2026 »
-function formatDate(string $date): string
-{
-    return date('d.m.Y', strtotime($date));
-}
+// formatDate() (« 2026-11-04 » → « 04.11.2026 ») : config/init.php
 
 /**
  * Boutons d'action : principal (2/3 de la largeur) + menu « Plus d'actions » (1/3).
  * Affichés deux fois : dans la barre du bas sur mobile, sous le nom de l'objet sur grand écran.
- * $dropup : le menu s'ouvre vers le haut (barre en bas de l'écran).
+ * $dropup : le menu s'ouvre vers le haut (barre en bas de l'écran). $code : code de l'objet (réimpression de l'étiquette).
  */
-function renderActions(string $status, bool $dropup): void
+function renderActions(string $status, bool $dropup, string $code): void
 {
     // Chaque bouton ouvre le modal « bientôt disponible » ; data-action donne son titre (script en bas de page)
     $soon = 'data-bs-toggle="modal" data-bs-target="#article-soon-modal"';
@@ -191,6 +188,8 @@ function renderActions(string $status, bool $dropup): void
             <button type="button" class="btn btn-outline-primary w-100 px-1 text-nowrap" data-bs-toggle="dropdown" aria-expanded="false">Plus d'actions</button>
             <ul class="dropdown-menu dropdown-menu-end shadow">
                 <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#article-edit-modal">Modifier</button></li>
+                <!-- data-reprint-code : le dialog des codes QR s'ouvre en réimpression de ce code (scripts/download-qr-modal.js) -->
+                <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#download-qr-modal" data-reprint-code="<?= htmlspecialchars($code) ?>">Réimprimer l'étiquette</button></li>
                 <?php if ($status === 'Vendu'): ?>
                     <li><button type="button" class="dropdown-item" <?= $soon ?> data-action="Remettre disponible">Remettre disponible</button></li>
                 <?php endif; ?>
@@ -306,7 +305,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 
             <!-- Grand écran : actions ici ; mobile : dans la barre fixée en bas (fin de page) -->
             <div class="d-none d-lg-block mb-4">
-                <?php renderActions($status, false); ?>
+                <?php renderActions($status, false, $article->getCode()); ?>
             </div>
 
             <section aria-labelledby="article-fields-title">
@@ -358,19 +357,23 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <?php if ($loan->isOngoing()): ?>
-                            <!-- Prêt en cours : ouvre le dialog de prêt en mode « modification », pré-rempli avec ces data-* (scripts/article-loan.js) -->
-                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#article-loan-modal"
-                                data-loan-id="<?= $loan->getId() ?>" data-client-id="<?= $loan->getClientId() ?>"
-                                data-start-date="<?= $loan->getStartDate() ?>" data-due-date="<?= $loan->getDueDate() ?>">
-                                Modifier
-                            </button>
-                        <?php endif; ?>
-                        <?php if ($loan->getDamages()): ?>
-                            <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#damage-modal-<?= $loan->getId() ?>">
-                                Dégâts (<?= count($loan->getDamages()) ?>)
-                            </button>
-                        <?php endif; ?>
+                        <div class="d-flex flex-wrap justify-content-end gap-1 flex-shrink-0">
+                            <!-- Contrat de prêt en PDF, dans un nouvel onglet (api/loan/contract.php) -->
+                            <a class="btn btn-sm btn-outline-secondary text-nowrap" href="/api/loan/contract.php?loan_id=<?= $loan->getId() ?>" target="_blank" rel="noopener">Contrat</a>
+                            <?php if ($loan->isOngoing()): ?>
+                                <!-- Prêt en cours : ouvre le dialog de prêt en mode « modification », pré-rempli avec ces data-* (scripts/article-loan.js) -->
+                                <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-bs-toggle="modal" data-bs-target="#article-loan-modal"
+                                    data-loan-id="<?= $loan->getId() ?>" data-client-id="<?= $loan->getClientId() ?>"
+                                    data-start-date="<?= $loan->getStartDate() ?>" data-due-date="<?= $loan->getDueDate() ?>">
+                                    Modifier
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($loan->getDamages()): ?>
+                                <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" data-bs-toggle="modal" data-bs-target="#damage-modal-<?= $loan->getId() ?>">
+                                    Dégâts (<?= count($loan->getDamages()) ?>)
+                                </button>
+                            <?php endif; ?>
+                        </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
@@ -599,7 +602,9 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
     <!-- Prêt de l'objet : client (existant ou nouveau), date de sortie, date de retour prévue (optionnelle) -->
     <div class="modal fade" id="article-loan-modal" tabindex="-1" aria-labelledby="article-loan-modal-label" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
-            <form class="modal-content" novalidate data-role="loan-form" data-article-id="<?= $article->getId() ?>">
+            <!-- data-default-days : durée de prêt par défaut de l'organisation (Paramètres › Prêts), vide = indéterminée -->
+            <form class="modal-content" novalidate data-role="loan-form" data-article-id="<?= $article->getId() ?>"
+                data-default-days="<?= $organisation->getDefaultLoanDays() ?? '' ?>">
                 <div class="modal-header py-2">
                     <h5 class="modal-title fs-6 text-truncate" id="article-loan-modal-label">Prêter « <?= htmlspecialchars($article->getName()) ?> »</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -704,12 +709,17 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
             </div>
         </div>
     </div>
+
+    <?php
+    // Réimpression de l'étiquette (« Plus d'actions ») : dialog des codes QR, ouvert en mode réimpression
+    include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/download-qr-modal.php';
+    ?>
 </main>
 
 <!-- Mobile : barre d'actions fixée en bas de l'écran (masquée à partir de lg) -->
 <div class="article-action-bar fixed-bottom bg-body border-top shadow-sm d-lg-none">
     <div class="container py-2">
-        <?php renderActions($status, true); ?>
+        <?php renderActions($status, true, $article->getCode()); ?>
     </div>
 </div>
 

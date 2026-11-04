@@ -156,6 +156,15 @@
     endInput.addEventListener("input", () => endInput.setCustomValidity(""));
     photoInput?.addEventListener("change", () => addPhotos(photoInput.files));
     modal.addEventListener("show.bs.modal", reset);
+
+    // Bouton « Retour » de la page « Prêts en cours » : la fiche s'ouvre avec ?retour=1 → dialog ouvert directement
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("retour")) {
+        // Paramètre retiré de l'adresse : recharger la page ou revenir en arrière ne rouvre pas le dialog
+        params.delete("retour");
+        history.replaceState(null, "", `${window.location.pathname}?${params}`);
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
     form.addEventListener("submit", (e) => {
         e.preventDefault();
         save();

@@ -27,6 +27,11 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                     Écrivez-lui ci-dessous pour convenir de son retour.</p>
             </div>
 
+            <?php if ($organisation->getLostMessage()): ?>
+                <!-- Message de l'organisation (Paramètres › Objets perdus), ex. où déposer l'objet -->
+                <div class="alert alert-info"><?= nl2br(htmlspecialchars($organisation->getLostMessage())) ?></div>
+            <?php endif; ?>
+
             <div class="card mb-4">
                 <div class="row g-0 align-items-center">
                     <div class="col-4">

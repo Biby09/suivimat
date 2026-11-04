@@ -3,6 +3,7 @@
     Modal de téléchargement des codes QR d'une organisation.
     Prérequis : $organisation (Organisation) doit être défini avant l'inclusion.
     Ouverture : <button data-bs-toggle="modal" data-bs-target="#download-qr-modal">
+    Réimpression d'un code précis : ajouter data-reprint-code="XXXX" au bouton (le dialog s'ouvre en mode réimpression).
 
     Après la génération, l'événement « qr-codes-generated » (detail.pdfUrl) est émis.
     Si la page l'intercepte avec event.preventDefault(), le modal se ferme et la page gère la suite ;
@@ -20,6 +21,31 @@
             <div class="modal-body">
                 <form id="download-qr-form" method="post" action="/api/organisation/generate-qr-codes.php">
                     <input type="hidden" name="organisation_id" value="<?= $organisation->getId() ?>">
+
+                    <!-- Nouveaux codes (créés pour l'occasion) ou réimpression de codes existants (étiquette abîmée…) -->
+                    <fieldset class="mb-4">
+                        <legend class="fs-6 fw-bold">Codes</legend>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="qr-mode-new" value="new" checked>
+                            <label class="form-check-label" for="qr-mode-new">Nouveaux codes, pour de nouveaux objets</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="qr-mode-reprint" value="reprint">
+                            <label class="form-check-label" for="qr-mode-reprint">Réimprimer des codes existants (étiquette abîmée ou perdue)</label>
+                        </div>
+                        <div class="ms-4 mt-2" id="reprint-settings" hidden>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reprint_scope" id="reprint-scope-codes" value="codes" checked>
+                                <label class="form-check-label" for="reprint-scope-codes">Ces codes :</label>
+                            </div>
+                            <textarea class="form-control font-monospace text-uppercase my-2" id="reprint-codes" name="reprint_codes" rows="2"
+                                placeholder="Ex. AB12 CD34" aria-label="Codes à réimprimer, séparés par des espaces"></textarea>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="reprint_scope" id="reprint-scope-all" value="all">
+                                <label class="form-check-label" for="reprint-scope-all">Tous les objets enregistrés</label>
+                            </div>
+                        </div>
+                    </fieldset>
 
                     <fieldset class="mb-4">
                         <legend class="fs-6 fw-bold">Type de téléchargement</legend>
@@ -69,7 +95,7 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3" id="new-codes-settings">
                         <label for="object-count" class="form-label">Nombre d'objets à étiqueter</label>
                         <input type="number" class="form-control" id="object-count" name="object_count" min="18" max="1000" step="18" value="18" required aria-describedby="object-count-help">
                         <div id="object-count-help" class="form-text"></div>
@@ -86,4 +112,4 @@
     </div>
 </div>
 
-<script src="/scripts/download-qr-modal.js" defer></script>
+<script src="<?= asset('/scripts/download-qr-modal.js') ?>" defer></script>

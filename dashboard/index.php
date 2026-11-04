@@ -60,33 +60,28 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                 <div class="card text-decoration-none text-dark flex-grow-1">
                     <div class="card-body text-center">
                         <h2 class="card-title">Invitations</h2>
-                        <?php
-                        $invitations = $invitationManager->getAllInvitationsForUser();
-                        if (empty($invitations)) {
-                            echo '<p class="card-text">Vous n\'avez aucune invitation en attente.</p>';
-                        } else {
-                            foreach ($invitations as $invitation) {
-                                $org = $organisationManager->getOrganisationById($invitation->organisation_id); ?>
-                                <div class="card mb-3 border-start border-secondary border-2">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h3 class="card-title mb-0 text-secondary text-start text-break flex-grow-1"
-                                                style="min-width: 0;">
-                                                <?= htmlspecialchars($org->getName()) ?>
-                                            </h3>
-                                            <div>
-                                                <button class="btn btn-sm btn-success me-2 respond-invitation-accept"
-                                                    data-invitation-id=<?= $invitation->id ?>>Accepter</button>
-                                                <button class="btn btn-sm btn-danger respond-invitation-reject"
-                                                    data-invitation-id=<?= $invitation->id ?>>Refuser</button>
-                                            </div>
-                                        </div>
+                        <?php $invitations = $invitationManager->getAllInvitationsForUser(); ?>
+                        <?php if (!$invitations): ?>
+                            <p class="card-text">Vous n'avez aucune invitation en attente.</p>
+                        <?php endif; ?>
+                        <!-- Réponse aux invitations : scripts/invitations.js → api/invitation/respond-invitation.php -->
+                        <div data-role="invitation-message" aria-live="polite"></div>
+                        <?php foreach ($invitations as $invitation): ?>
+                            <div class="card mb-3 border-start border-secondary border-2 text-start" data-role="invitation">
+                                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div class="text-break" style="min-width: 0;">
+                                        <h3 class="fs-5 card-title mb-0 text-secondary"><?= htmlspecialchars($invitation->getOrganisationName()) ?></h3>
+                                        <?php if ($invitation->getInvitedByName()): ?>
+                                            <p class="small text-muted mb-0">Invité par <?= htmlspecialchars($invitation->getInvitedByName()) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-success" data-invitation-id="<?= $invitation->getId() ?>" data-action="accept">Accepter</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-invitation-id="<?= $invitation->getId() ?>" data-action="reject">Refuser</button>
                                     </div>
                                 </div>
-                                <?php
-                            }
-                        }
-                        ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -122,6 +117,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
     </main>
     <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-footer.php'; ?>
     <script src="/scripts/sendForm.js"></script>
+    <script src="<?= asset('/scripts/invitations.js') ?>" defer></script>
     <script>
         document.getElementById("create-organisation-form").addEventListener("submit", async (e) => {
             e.preventDefault();
