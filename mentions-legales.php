@@ -1,11 +1,5 @@
 <?php
-/*
-    Mentions légales et protection des données.
-    STRUCTURE À COMPLÉTER : les passages <mark>[À compléter : …]</mark> sont à remplir par le responsable du site,
-    et l'ensemble du texte est à faire vérifier avant une mise en ligne publique.
-    Les descriptions techniques (données enregistrées, cookie, photos) correspondent au fonctionnement actuel du code :
-    à mettre à jour si celui-ci change.
-*/
+
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 $page_title = 'Mentions légales | SuiviMat';
 $page_description = 'Mentions légales et protection des données de SuiviMat.';

@@ -129,6 +129,9 @@ body.app {
     text-overflow: ellipsis;
 }
 
+// Footer toujours en bas de l'écran, même si la page est courte : body est une colonne flex d'au moins la hauteur
+// de l'écran (100vh), et margin-top: auto sur le footer prend toute la place libre au-dessus de lui.
+// Ne pas mettre de classe Bootstrap mt-* sur un <footer> : plus spécifique, elle annulerait ce margin-top: auto.
 body {
     display: flex !important;
     flex-direction: column !important;
@@ -307,6 +310,45 @@ footer{
 // Inventaire (dashboard/organisation/index.php)
 .organisation-page {
     padding-bottom: map-get($spacers, 4);
+}
+
+// Prêts en cours (dashboard/organisation/loans/index.php)
+// Vignette de l'objet : carré de 4rem à gauche de la carte
+.loan-thumb {
+    width: 4rem;
+}
+
+// Pastilles de filtre : défilent au doigt si l'écran est trop étroit, sans barre de défilement visible
+.loans-filters {
+    scrollbar-width: none;           // Firefox
+
+    &::-webkit-scrollbar {           // Chrome, Safari
+        display: none;
+    }
+}
+
+// Clients (dashboard/organisation/clients/) : initiales dans un cercle
+.client-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: $primary-bg-subtle;
+    color: $primary;
+    font-weight: $font-weight-semibold;
+}
+
+.client-avatar-lg {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: $font-size-lg;
+}
+
+// Paramètres de l'organisation : un clic dans le sommaire (#members…) arrête la section sous le header fixe, pas dessous
+.settings-section {
+    scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
 }
 
 // Pages avec un élément fixé en bas de l'écran sur mobile : barre d'actions de la fiche d'un objet,

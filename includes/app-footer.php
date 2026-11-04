@@ -5,7 +5,9 @@
     APP_VERSION : config/init.php
 */
 ?>
-<footer class="app-footer border-top bg-white py-3 mt-4">
+<!-- Pas de classe mt-* : margin-top: auto (style.scss, règle « footer ») pousse le footer en bas des pages courtes ;
+     une classe Bootstrap mt-* (aussi !important, mais plus spécifique) l'en empêcherait -->
+<footer class="app-footer border-top bg-white py-3">
     <div class="container">
         <!-- Liste à puces « · » : les éléments passent à la ligne proprement sur un petit écran -->
         <ul class="list-inline small text-body-secondary text-center mb-0">
