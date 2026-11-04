@@ -58,7 +58,7 @@ if (!$newClient) {
 $mysqlClient->beginTransaction();
 try {
     if ($newClient) {
-        $client = $clientManager->createClient($firstname, $lastname);
+        $client = $clientManager->createClient($firstname, $lastname, $clientEmail);
     }
     $loanManager->updateLoan($loan, $client, $startDate, $dueDate);
     $mysqlClient->commit();

@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $organisationId = filter_input(INPUT_POST, 'organisation_id', FILTER_VALIDATE_INT);
 $firstname = trim($_POST['firstname'] ?? '');
 $lastname = trim($_POST['lastname'] ?? '');
+$email = parseOptionalEmail($_POST['email'] ?? ''); // facultatif : null si vide, false si invalide (config/init.php)
 
 if (!$organisationId) {
     sendError(400, 'ID d\'organisation invalide');
@@ -31,6 +32,9 @@ if ($firstname === '' || $lastname === '') {
 if (mb_strlen($firstname) > 50 || mb_strlen($lastname) > 50) {
     sendError(400, 'Le prénom et le nom ne peuvent pas dépasser 50 caractères');
 }
+if ($email === false) {
+    sendError(400, 'L\'adresse e-mail est invalide');
+}
 
 try {
     $organisation = $organisationManager->getOrganisationById($organisationId);
@@ -39,7 +43,7 @@ try {
 }
 
 try {
-    $client = (new ClientManager($mysqlClient, $organisation))->createClient($firstname, $lastname);
+    $client = (new ClientManager($mysqlClient, $organisation))->createClient($firstname, $lastname, $email);
 } catch (Exception $e) {
     error_log('Création du client impossible : ' . $e->getMessage());
     sendError(500, 'Erreur lors de l\'ajout du client');

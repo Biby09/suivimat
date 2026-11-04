@@ -59,7 +59,8 @@ if ($organisation === null) {
 $article = (new ArticleManager($mysqlClient, $organisation))->getArticleByCode($code);
 
 // Seuls les objets perdus peuvent être signalés : le formulaire ne sert pas à écrire à n'importe quelle organisation
-if ($article->getStatus() !== 'Perdu') {
+// … et seulement si l'organisation a laissé la page « objet perdu » activée (Paramètres › Objets perdus)
+if ($article->getStatus() !== 'Perdu' || !$organisation->isLostPageEnabled()) {
     sendError(409, 'Cet objet n\'est pas signalé comme perdu');
 }
 

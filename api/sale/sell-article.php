@@ -63,7 +63,7 @@ if (!$newClient) {
 $mysqlClient->beginTransaction();
 try {
     if ($newClient) {
-        $client = $clientManager->createClient($firstname, $lastname);
+        $client = $clientManager->createClient($firstname, $lastname, $clientEmail);
     }
     (new SaleManager($mysqlClient, $organisation))->sellArticle($article, $client, $saleDate, $ongoingLoan);
     $mysqlClient->commit();

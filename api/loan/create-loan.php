@@ -51,7 +51,7 @@ if (!$newClient) {
 $mysqlClient->beginTransaction();
 try {
     if ($newClient) {
-        $client = $clientManager->createClient($firstname, $lastname);
+        $client = $clientManager->createClient($firstname, $lastname, $clientEmail);
     }
     // Utilise la transaction ouverte ci-dessus (voir LoanManager::createLoan)
     (new LoanManager($mysqlClient, $organisation))->createLoan($article, $client, $startDate, $dueDate);
