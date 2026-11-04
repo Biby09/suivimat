@@ -1,6 +1,7 @@
 <?php
 // Articles configurés de l'organisation, par pages de 30, filtrés par catégorie et recherche.
-// Paramètres GET : organisation_id, page (défaut 1), categorie (« none » ou ID, absent = toutes), q (recherche)
+// Paramètres GET : organisation_id, page (défaut 1), categorie (« none » ou ID, absent = toutes), q (recherche),
+//                 statut (« disponible », « emprunte », « vendu », « perdu », absent = tous)
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
@@ -28,6 +29,7 @@ $organisationId = filter_input(INPUT_GET, 'organisation_id', FILTER_VALIDATE_INT
 $page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT, ['options' => ['default' => 1, 'min_range' => 1]]) ?: 1;
 $category = $_GET['categorie'] ?? '';
 $query = mb_substr(trim($_GET['q'] ?? ''), 0, 100);
+$statusFilter = $_GET['statut'] ?? '';
 
 try {
     $organisation = $organisationManager->getOrganisationById((int) $organisationId);
@@ -37,6 +39,15 @@ try {
 
 $articleManager = new ArticleManager($mysqlClient, $organisation);
 $categoryManager = new CategoryManager($mysqlClient, $organisation);
+
+// Filtre statut : « disponible » → 'Disponible', « emprunte » → 'Emprunté', « vendu » → 'Vendu', « perdu » → 'Perdu', absent → null (tous)
+$status = null;
+if ($statusFilter !== '') {
+    if (!isset(ArticleManager::STATUS_FILTERS[$statusFilter])) {
+        sendError(400, 'Statut invalide');
+    }
+    $status = ArticleManager::STATUS_FILTERS[$statusFilter];
+}
 
 // Filtre catégorie : la catégorie choisie et toutes ses sous-catégories
 $categoryIds = null;
@@ -54,14 +65,19 @@ if (!$withoutCategory && $category !== '') {
 $words = array_slice(preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY), 0, MAX_WORDS);
 $words = array_map(fn($word) => ['text' => $word, 'category_ids' => $categoryManager->findCategoryIdsByName($word)], $words);
 
-$result = $articleManager->searchConfiguredArticles($categoryIds, $withoutCategory, $words, PAGE_SIZE, ($page - 1) * PAGE_SIZE);
+$result = $articleManager->searchConfiguredArticles($categoryIds, $withoutCategory, $status, $words, PAGE_SIZE, ($page - 1) * PAGE_SIZE);
 $pages = max(1, (int) ceil($result['total'] / PAGE_SIZE));
 
 // Page au-delà de la dernière (ex. objets supprimés entre-temps) : dernière page
 if ($page > $pages) {
     $page = $pages;
-    $result = $articleManager->searchConfiguredArticles($categoryIds, $withoutCategory, $words, PAGE_SIZE, ($page - 1) * PAGE_SIZE);
+    $result = $articleManager->searchConfiguredArticles($categoryIds, $withoutCategory, $status, $words, PAGE_SIZE, ($page - 1) * PAGE_SIZE);
 }
+
+// Compteurs de l'aside : ils suivent le filtre statut, pour correspondre à ce qui sera affiché
+$counts = $articleManager->countConfiguredArticlesByCategory($status);
+// Nombre total d'objets de l'inventaire, quel que soit le statut (message « aucun objet enregistré »)
+$inventorySize = $status === null ? array_sum($counts) : array_sum($articleManager->countConfiguredArticlesByCategory());
 
 $coverUrls = (new ImageManager($mysqlClient))->getCoverUrls(array_map(fn(Article $article) => $article->getId(), $result['articles']));
 
@@ -79,6 +95,7 @@ echo json_encode([
     'page' => $page,
     'pages' => $pages,
     'page_size' => PAGE_SIZE,
-    // Compteurs de l'aside (sans recherche ni filtre) : [id_catégorie => nombre], 0 = sans catégorie
-    'counts' => (object) $articleManager->countConfiguredArticlesByCategory(),
+    // Compteurs de l'aside (sans recherche ni catégorie, mais avec le statut) : [id_catégorie => nombre], 0 = sans catégorie
+    'counts' => (object) $counts,
+    'inventory_size' => $inventorySize,
 ]);

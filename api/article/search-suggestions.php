@@ -1,6 +1,6 @@
 <?php
 // Propositions affichées pendant la saisie dans la recherche : catégories et objets correspondants.
-// Paramètres GET : organisation_id, q
+// Paramètres GET : organisation_id, q, statut (« disponible », « emprunte », « vendu », « perdu », absent = tous)
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/init.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
@@ -21,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $organisationId = filter_input(INPUT_GET, 'organisation_id', FILTER_VALIDATE_INT);
 $query = mb_substr(trim($_GET['q'] ?? ''), 0, 100);
+// Statut inconnu : ignoré (simples propositions, pas besoin d'une erreur)
+$status = ArticleManager::STATUS_FILTERS[$_GET['statut'] ?? ''] ?? null;
 
 try {
     $organisation = $organisationManager->getOrganisationById((int) $organisationId);
@@ -45,7 +47,7 @@ $categoryIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 // Objets : mêmes règles que la recherche validée avec Entrée
 $words = array_slice(preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY), 0, MAX_WORDS);
 $words = array_map(fn($word) => ['text' => $word, 'category_ids' => $categoryManager->findCategoryIdsByName($word)], $words);
-$result = (new ArticleManager($mysqlClient, $organisation))->searchConfiguredArticles(null, false, $words, MAX_ARTICLES, 0);
+$result = (new ArticleManager($mysqlClient, $organisation))->searchConfiguredArticles(null, false, $status, $words, MAX_ARTICLES, 0);
 
 echo json_encode([
     'success' => true,

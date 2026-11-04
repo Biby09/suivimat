@@ -19,13 +19,13 @@ $organisationManager->markAsOpened($organisation);
 
 /*
     Inventaire de l'organisation : tous les objets configurés.
-    Filtre par catégorie (aside) et recherche dans les noms d'objets, les codes et les noms de catégories.
+    Filtre par statut (tous / disponibles / empruntés / vendus / perdus) et par catégorie (aside), et recherche dans les noms d'objets, les codes et les noms de catégories.
     Les objets sont chargés par pages de 30 (api/article/get-articles.php) ; la recherche n'est appliquée qu'avec Entrée,
     des propositions s'affichent pendant la saisie (api/article/search-suggestions.php).
     « Modifier » (à côté des catégories) ouvre le modal includes/modals/category-setup-modal.php.
     « Enregistrer des objets » ouvre le modal includes/modals/article-setup-modal.php ; la liste se recharge après chaque objet enregistré.
     Les données sont chargées et filtrées par scripts/organisation-articles.js ;
-    le filtre courant est gardé dans l'URL (?categorie=…&q=…&page=…).
+    le filtre courant est gardé dans l'URL (?statut=…&categorie=…&q=…&page=…).
 */
 ?>
 <!DOCTYPE html>
@@ -70,7 +70,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 
                 <div class="d-flex gap-2 d-lg-none">
                     <button class="btn btn-outline-secondary flex-grow-1 text-truncate" type="button" data-bs-toggle="offcanvas" data-bs-target="#organisation-categories" aria-controls="organisation-categories">
-                        Catégories : <span class="fw-bold" data-role="current-category-short">Tous les objets</span>
+                        Filtres : <span class="fw-bold" data-role="current-category-short">Tous les objets</span>
                     </button>
                     <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#category-setup-modal" aria-label="Modifier les catégories" title="Modifier les catégories">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/></svg>
@@ -79,13 +79,38 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 
                 <aside class="offcanvas-lg offcanvas-start organisation-aside" tabindex="-1" id="organisation-categories" aria-labelledby="organisation-categories-label">
                     <div class="offcanvas-header">
-                        <h2 class="offcanvas-title fs-5" id="organisation-categories-label">Catégories</h2>
+                        <h2 class="offcanvas-title fs-5" id="organisation-categories-label">Filtres</h2>
                         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#organisation-categories" aria-label="Fermer"></button>
                     </div>
                     <div class="offcanvas-body flex-column">
-                        <div class="d-none d-lg-flex justify-content-between align-items-center mb-2">
+                        <!-- Filtre par statut : boutons radio stylés en groupe de boutons Bootstrap.
+                             Titre en <h2> avec les mêmes classes que « Catégories » pour une apparence identique -->
+                        <div class="mb-3" role="radiogroup" aria-labelledby="status-filter-label" data-role="status-filter">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h2 class="fs-6 text-uppercase text-muted mb-0" id="status-filter-label">Statut</h2>
+                            </div>
+                            <!-- Grille de 2 colonnes (5 boutons ne tiennent pas sur une ligne) ; « Tous » occupe toute la première ligne -->
+                            <div class="organisation-status-filter">
+                                <input type="radio" class="btn-check" name="statut" id="statut-tous" value="all" autocomplete="off" checked>
+                                <label class="btn btn-sm btn-outline-primary organisation-status-filter-all" for="statut-tous">Tous</label>
+
+                                <input type="radio" class="btn-check" name="statut" id="statut-disponible" value="disponible" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="statut-disponible">Disponibles</label>
+
+                                <input type="radio" class="btn-check" name="statut" id="statut-emprunte" value="emprunte" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="statut-emprunte">Empruntés</label>
+
+                                <input type="radio" class="btn-check" name="statut" id="statut-vendu" value="vendu" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="statut-vendu">Vendus</label>
+
+                                <input type="radio" class="btn-check" name="statut" id="statut-perdu" value="perdu" autocomplete="off">
+                                <label class="btn btn-sm btn-outline-primary" for="statut-perdu">Perdus</label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h2 class="fs-6 text-uppercase text-muted mb-0">Catégories</h2>
-                            <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" type="button" data-bs-toggle="modal" data-bs-target="#category-setup-modal">
+                            <button class="btn btn-sm btn-outline-secondary d-none d-lg-flex align-items-center gap-1" type="button" data-bs-toggle="modal" data-bs-target="#category-setup-modal">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/></svg>
                                 Modifier
                             </button>
@@ -130,6 +155,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 </main>
 
 <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php'; ?>
-<script src="/scripts/organisation-articles.js" defer></script>
+<!-- ?v=… change à chaque modification du fichier : le navigateur ne peut pas garder une ancienne version en cache -->
+<script src="/scripts/organisation-articles.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . '/scripts/organisation-articles.js') ?>" defer></script>
 </body>
 </html>

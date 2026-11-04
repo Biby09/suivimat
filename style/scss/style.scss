@@ -227,22 +227,32 @@ footer{
 }
 
 // Inventaire (dashboard/organisation/index.php)
-// Colonne de gauche (recherche + catégories) fixée sous le header sur grand écran ; les objets occupent le reste
+// Colonne de gauche (recherche + filtres) collée à l'écran sur grand écran, sans barre de défilement propre :
+// - si elle tient dans l'écran : fixée sous le header ;
+// - si elle est plus haute : elle défile avec la page jusqu'à ce qu'on voie sa fin, puis reste collée en bas.
+// --sidebar-height (hauteur réelle de la colonne) est mesurée et mise à jour par scripts/organisation-articles.js
 @include media-breakpoint-up(lg) {
     .organisation-sidebar {
         position: sticky;
-        top: calc(#{$header-height} + #{map-get($spacers, 3)});
+        top: min(
+            calc(#{$header-height} + #{map-get($spacers, 3)}),
+            calc(100vh - var(--sidebar-height, 0px) - #{map-get($spacers, 3)})
+        );
         z-index: $zindex-sticky;
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - #{$header-height} - #{map-get($spacers, 3) * 2});
     }
+}
 
-    // Beaucoup de catégories : la liste défile seule, la recherche reste visible
-    .organisation-aside {
-        min-height: 0;
-        overflow-y: auto;
-    }
+// Boutons « Tous / Disponibles / Empruntés / Vendus / Perdus » : grille de 2 colonnes de même largeur,
+// qui tient dans la colonne de l'aside même étroite (~216px de contenu sur un écran de 1000px)
+.organisation-status-filter {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: map-get($spacers, 1);
+}
+
+// « Tous » : seul sur la première ligne, de la première à la dernière colonne
+.organisation-status-filter-all {
+    grid-column: 1 / -1;
 }
 
 // Propositions de recherche : plus larges que la colonne, au-dessus des cartes d'objets

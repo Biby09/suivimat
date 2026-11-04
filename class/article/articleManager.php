@@ -2,6 +2,15 @@
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/article/article.php';
 class ArticleManager
 {
+    // Statuts d'un objet configuré (art_status, ENUM en base : database/migrations/2026-11-04-art-status-enum.sql) ;
+    // 'Non attribué' = code QR pas encore configuré, hors inventaire.
+    // Filtre « statut » reçu dans l'URL (?statut=…) => valeur de art_status en base
+    public const STATUS_FILTERS = [
+        'disponible' => 'Disponible',
+        'emprunte' => 'Emprunté',
+        'vendu' => 'Vendu',
+        'perdu' => 'Perdu',
+    ];
 
     private PDO $pdo;
     private Organisation $organisation;
@@ -49,14 +58,20 @@ class ArticleManager
      * Recherche paginée parmi les articles configurés, triés par nom. Retourne ['articles' => Article[], 'total' => int].
      * $categoryIds : null = toutes les catégories, sinon IDs autorisés (une catégorie et ses sous-catégories)
      * $withoutCategory : uniquement les articles sans catégorie
+     * $status : null = tous les statuts, sinon valeur de art_status ('Disponible', 'Emprunté', 'Vendu' ou 'Perdu')
      * $words : chaque mot doit apparaître dans le nom ou le code de l'article, ou dans une de ses catégories :
      *          [['text' => mot, 'category_ids' => IDs des catégories dont le nom (ou celui d'une parente) contient le mot], ...]
      * La collation de la base ignore la casse et les accents.
      */
-    public function searchConfiguredArticles(?array $categoryIds, bool $withoutCategory, array $words, int $limit, int $offset): array
+    public function searchConfiguredArticles(?array $categoryIds, bool $withoutCategory, ?string $status, array $words, int $limit, int $offset): array
     {
         $where = ["idx_organisation = :organisation", "art_status <> 'Non attribué'"];
         $params = ['organisation' => $this->organisation->getId()];
+
+        if ($status !== null) {
+            $where[] = 'art_status = :status';
+            $params['status'] = $status;
+        }
 
         if ($withoutCategory) {
             $where[] = 'idx_category IS NULL';
@@ -95,11 +110,18 @@ class ArticleManager
 
     /**
      * Nombre d'articles configurés par catégorie : [id_catégorie => nombre], 0 pour « sans catégorie »
+     * $status : null = tous les statuts, sinon seuls les articles ayant ce art_status sont comptés
      */
-    public function countConfiguredArticlesByCategory(): array
+    public function countConfiguredArticlesByCategory(?string $status = null): array
     {
-        $stmt = $this->pdo->prepare("SELECT COALESCE(idx_category, 0), COUNT(*) FROM articles WHERE idx_organisation = :organisation AND art_status <> 'Non attribué' GROUP BY idx_category");
-        $stmt->execute(['organisation' => $this->organisation->getId()]);
+        $sql = "SELECT COALESCE(idx_category, 0), COUNT(*) FROM articles WHERE idx_organisation = :organisation AND art_status <> 'Non attribué'";
+        $params = ['organisation' => $this->organisation->getId()];
+        if ($status !== null) {
+            $sql .= ' AND art_status = :status';
+            $params['status'] = $status;
+        }
+        $stmt = $this->pdo->prepare("$sql GROUP BY idx_category");
+        $stmt->execute($params);
 
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_KEY_PAIR));
     }

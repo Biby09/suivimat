@@ -1,4 +1,4 @@
-// Inventaire d'une organisation (dashboard/organisation/index.php) : filtre par catégorie, recherche et pages de résultats
+// Inventaire d'une organisation (dashboard/organisation/index.php) : filtre par statut et par catégorie, recherche et pages de résultats
 (() => {
     const root = document.getElementById("organisation-articles");
     if (!root) {
@@ -9,6 +9,7 @@
     const searchForm = root.querySelector("[data-role='search-form']");
     const searchInput = searchForm.elements["q"];
     const suggestionList = root.querySelector("[data-role='suggestions']");
+    const statusFilter = root.querySelector("[data-role='status-filter']");
     const categoryList = root.querySelector("[data-role='categories']");
     const currentCategoryShort = root.querySelector("[data-role='current-category-short']");
     const offcanvasElement = document.getElementById("organisation-categories");
@@ -24,11 +25,14 @@
     // Filtre « catégorie » : "all", "none" (sans catégorie) ou l'ID d'une catégorie
     const ALL = "all";
     const NONE = "none";
+    // Filtre « statut » : ALL ou une clé de STATUS_LABELS (mêmes valeurs que ArticleManager::STATUS_FILTERS côté PHP)
+    const STATUS_LABELS = { disponible: "Disponibles", emprunte: "Empruntés", vendu: "Vendus", perdu: "Perdus" };
     const SUGGESTION_DELAY = 200; // ms sans frappe avant de demander des propositions
 
     let categories = [];
     let counts = {};      // nombre d'objets par catégorie (« 0 » = sans catégorie), fourni par l'API
     let selected = ALL;
+    let status = ALL;
     let query = "";       // recherche appliquée (validée avec Entrée), différente de la saisie en cours
     let page = 1;
     let articlesRequest = 0;  // seule la réponse de la dernière requête est affichée
@@ -97,6 +101,11 @@
             return "Sans catégorie";
         }
         return categoryPathLabel(selected);
+    }
+
+    // Catégorie + statut, ex. « Câbles › Jack · Empruntés » (titre des résultats, bouton « Filtres » sur mobile)
+    function filtersLabel() {
+        return status === ALL ? selectedLabel() : `${selectedLabel()} · ${STATUS_LABELS[status]}`;
     }
 
     function countIn(filter) {
@@ -172,13 +181,16 @@
                 link.removeAttribute("aria-current");
             }
         });
-        currentCategoryShort.textContent = selectedLabel();
+        currentCategoryShort.textContent = filtersLabel();
+        // Bouton radio du statut courant coché (utile après lecture de l'URL ou réinitialisation)
+        statusFilter.querySelector(`input[value="${status}"]`).checked = true;
     }
 
     // ---- Objets ----
 
     function statusClass(status) {
-        return { "Disponible": "text-bg-success", "Prêté": "text-bg-warning" }[status] ?? "text-bg-secondary";
+        // Couleur du badge selon art_status ; statut inconnu : gris
+        return { "Disponible": "text-bg-success", "Emprunté": "text-bg-warning", "Vendu": "text-bg-dark", "Perdu": "text-bg-danger" }[status] ?? "text-bg-secondary";
     }
 
     function articleCard(article) {
@@ -301,6 +313,9 @@
         if (query) {
             params.set("q", query);
         }
+        if (status !== ALL) {
+            params.set("statut", status);
+        }
 
         articleList.setAttribute("aria-busy", "true");
         articleList.classList.add("opacity-50");
@@ -329,8 +344,9 @@
         // Rendre la pagination avec les numéros de page
         renderPagination(data.page, data.pages);
 
-        const hasArticles = countIn(ALL) > 0;
-        resultsTitle.textContent = query ? `${selectedLabel()} · « ${query} »` : selectedLabel();
+        // Les compteurs suivent le statut : l'inventaire peut contenir des objets même si aucun n'est emprunté
+        const hasArticles = data.inventory_size > 0;
+        resultsTitle.textContent = query ? `${filtersLabel()} · « ${query} »` : filtersLabel();
         const first = (data.page - 1) * data.page_size + 1;
         resultsCount.textContent = data.pages > 1
             ? `${first}–${first + data.articles.length - 1} sur ${data.total} objets`
@@ -372,6 +388,13 @@
         loadArticles();
     }
 
+    function selectStatus(value) {
+        status = value;
+        page = 1;
+        highlightSelected();
+        loadArticles();
+    }
+
     function applySearch(text) {
         hideSuggestions();
         searchInput.value = text;
@@ -384,6 +407,7 @@
 
     function urlParams(targetPage = page) {
         const params = new URLSearchParams(window.location.search);
+        status === ALL ? params.delete("statut") : params.set("statut", status);
         selected === ALL ? params.delete("categorie") : params.set("categorie", selected);
         query ? params.set("q", query) : params.delete("q");
         targetPage > 1 ? params.set("page", targetPage) : params.delete("page");
@@ -401,6 +425,11 @@
             selected = NONE;
         } else if (filter && categoryById(Number(filter))) {
             selected = Number(filter);
+        }
+        // Statut inconnu dans l'URL (lien modifié à la main) : ignoré
+        const statusParam = params.get("statut");
+        if (Object.hasOwn(STATUS_LABELS, statusParam ?? "")) {
+            status = statusParam;
         }
         query = (params.get("q") ?? "").trim();
         searchInput.value = query;
@@ -521,6 +550,9 @@
 
         suggestionController = new AbortController();
         const params = new URLSearchParams({ organisation_id: organisationId, q: text });
+        if (status !== ALL) {
+            params.set("statut", status);
+        }
         let data;
         try {
             data = await fetchJson(`/api/article/search-suggestions.php?${params}`, { signal: suggestionController.signal });
@@ -571,11 +603,26 @@
         applySearch(searchInput.value);
     });
 
+    // « change » remonte (bubbling) des boutons radio jusqu'au conteneur [data-role='status-filter'] : un seul écouteur pour les trois
+    statusFilter.addEventListener("change", (e) => {
+        // Sur mobile, le panneau reste ouvert : on peut encore choisir une catégorie
+        selectStatus(e.target.value);
+    });
+
     root.querySelector("[data-role='reset']").addEventListener("click", () => {
         searchInput.value = "";
         query = "";
+        status = ALL;
         selectCategory(ALL);
     });
+
+    // Hauteur de la colonne de gauche transmise au CSS (variable --sidebar-height) : sert à la garder collée
+    // à l'écran sans barre de défilement (voir .organisation-sidebar dans style.scss).
+    // ResizeObserver rappelle la fonction à chaque changement de taille (catégories chargées, fenêtre redimensionnée…)
+    const sidebar = root.querySelector(".organisation-sidebar");
+    new ResizeObserver(() => {
+        sidebar.style.setProperty("--sidebar-height", `${sidebar.offsetHeight}px`);
+    }).observe(sidebar);
 
     // Objet enregistré depuis le modal « Enregistrer des objets », catégories modifiées : on recharge
     document.addEventListener("article-configured", reload);
