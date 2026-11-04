@@ -9,7 +9,8 @@ class Sale
     private int $articleId;
     private int $clientId;
     private string $clientName;
-    private string $date; // AAAA-MM-JJ
+    private string $date;            // AAAA-MM-JJ
+    private ?string $cancelledAt;    // date d'annulation (« Remettre disponible ») ; null = vente valable
 
     public function hydrate(array $ligne): void
     {
@@ -18,6 +19,7 @@ class Sale
         $this->clientId = (int) $ligne['idx_client'];
         $this->clientName = trim(($ligne['cli_firstname'] ?? '') . ' ' . ($ligne['cli_lastname'] ?? ''));
         $this->date = $ligne['sa_date'];
+        $this->cancelledAt = $ligne['sa_cancelled_at'] ?? null;
     }
 
     public function getId(): int
@@ -43,5 +45,10 @@ class Sale
     public function getDate(): string
     {
         return $this->date;
+    }
+
+    public function getCancelledAt(): ?string
+    {
+        return $this->cancelledAt;
     }
 }

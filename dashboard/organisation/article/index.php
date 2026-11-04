@@ -34,8 +34,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/class/loss/lossManager.php';
     « Perdu depuis le … » et le bouton « Objet retrouvé » qui désactive le mode perdu (scripts/article-lost.js,
     api/loss/mark-lost.php et mark-found.php).
     « Modifier » ouvre le dialog de modification (nom, catégorie, champs personnalisés, photos : scripts/article-edit.js,
-    enregistré par api/article/configure-article.php). « Remettre disponible » (objet vendu) n'est pas encore développé :
-    il ouvre le modal « bientôt disponible » en bas de page.
+    enregistré par api/article/configure-article.php).
+    « Remettre disponible » (objet vendu) : confirmation, puis la vente est annulée (gardée dans la base) et l'objet
+    redevient disponible (scripts/article-unsell.js, api/sale/cancel-sale.php).
     Footer : la ligne discrète de l'application (includes/app-footer.php).
 */
 
@@ -167,8 +168,6 @@ $categoryLabel = $categoryPath ? implode(' › ', array_map(fn(Category $categor
  */
 function renderActions(string $status, bool $dropup, string $code): void
 {
-    // Chaque bouton ouvre le modal « bientôt disponible » ; data-action donne son titre (script en bas de page)
-    $soon = 'data-bs-toggle="modal" data-bs-target="#article-soon-modal"';
     ?>
     <div class="row g-2">
         <div class="col-8">
@@ -180,8 +179,8 @@ function renderActions(string $status, bool $dropup, string $code): void
                 <!-- Désactive le mode perdu (scan du code QR d'un objet perdu par un membre) -->
                 <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#article-found-modal">Objet retrouvé</button>
             <?php else: ?>
-                <!-- Vendu : on ne peut pas le prêter -->
-                <button type="button" class="btn btn-primary w-100" disabled>Prêter</button>
+                <!-- Vendu : on ne peut pas le prêter ; le bouton principal annule la vente -->
+                <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#article-unsell-modal">Remettre disponible</button>
             <?php endif; ?>
         </div>
         <div class="col-4 <?= $dropup ? 'dropup' : 'dropdown' ?>">
@@ -191,7 +190,7 @@ function renderActions(string $status, bool $dropup, string $code): void
                 <!-- data-reprint-code : le dialog des codes QR s'ouvre en réimpression de ce code (scripts/download-qr-modal.js) -->
                 <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#download-qr-modal" data-reprint-code="<?= htmlspecialchars($code) ?>">Réimprimer l'étiquette</button></li>
                 <?php if ($status === 'Vendu'): ?>
-                    <li><button type="button" class="dropdown-item" <?= $soon ?> data-action="Remettre disponible">Remettre disponible</button></li>
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#article-unsell-modal">Remettre disponible</button></li>
                 <?php endif; ?>
                 <?php if ($status === 'Perdu'): ?>
                     <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#article-found-modal">Objet retrouvé</button></li>
@@ -535,6 +534,32 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
     </div>
     <?php endif; ?>
 
+    <!-- Remettre disponible un objet vendu : confirmation, puis annulation de la vente (gardée dans la base) -->
+    <?php if ($status === 'Vendu'): ?>
+    <div class="modal fade" id="article-unsell-modal" tabindex="-1" aria-labelledby="article-unsell-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" novalidate data-role="unsell-form" data-article-id="<?= $article->getId() ?>">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title fs-6" id="article-unsell-modal-label">Remettre disponible</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div data-role="message" aria-live="polite"></div>
+                    <?php if ($sale): ?>
+                        <p class="mb-2">« <?= htmlspecialchars($article->getName()) ?> » a été vendu à <strong><?= htmlspecialchars($sale->getClientName()) ?></strong>
+                            le <?= formatDate($sale->getDate()) ?>.</p>
+                    <?php endif; ?>
+                    <p class="mb-0">La vente sera <strong>annulée</strong> (erreur de saisie, objet repris…) et l'objet redeviendra disponible au prêt.</p>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" data-role="save">Remettre disponible</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Objet retrouvé : confirmation, puis désactivation du mode perdu (l'objet redevient disponible) -->
     <?php if ($status === 'Perdu'): ?>
     <div class="modal fade" id="article-found-modal" tabindex="-1" aria-labelledby="article-found-modal-label" aria-hidden="true">
@@ -692,24 +717,6 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
     <!-- JSON_HEX_TAG : « < » et « > » encodés, un nom contenant « </script> » ne peut pas fermer la balise -->
     <script type="application/json" id="article-edit-data"><?= json_encode($editData, JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 
-    <!-- Actions pas encore développées -->
-    <div class="modal fade" id="article-soon-modal" tabindex="-1" aria-labelledby="article-soon-modal-label" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header py-2">
-                    <h5 class="modal-title fs-6" id="article-soon-modal-label">Bientôt disponible</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-0">Cette action sera disponible prochainement.</p>
-                </div>
-                <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <?php
     // Réimpression de l'étiquette (« Plus d'actions ») : dialog des codes QR, ouvert en mode réimpression
     include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/download-qr-modal.php';
@@ -733,13 +740,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 <script src="<?= asset('/scripts/article-loan.js') ?>" defer></script>
 <script src="<?= asset('/scripts/article-sale.js') ?>" defer></script>
 <script src="<?= asset('/scripts/article-lost.js') ?>" defer></script>
+<script src="<?= asset('/scripts/article-unsell.js') ?>" defer></script>
 <script src="<?= asset('/scripts/article-return.js') ?>" defer></script>
-<script>
-    // Titre du modal « bientôt disponible » = action cliquée.
-    // show.bs.modal : événement Bootstrap juste avant l'ouverture ; e.relatedTarget = bouton qui l'a ouvert
-    document.getElementById("article-soon-modal").addEventListener("show.bs.modal", (e) => {
-        e.target.querySelector(".modal-title").textContent = e.relatedTarget?.dataset.action ?? "Bientôt disponible";
-    });
-</script>
 </body>
 </html>

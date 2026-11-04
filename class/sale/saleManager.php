@@ -7,6 +7,11 @@ class ArticleNotSellableException extends Exception
 {
 }
 
+// Levée par cancelSale() quand l'objet n'est plus vendu (vente déjà annulée par quelqu'un d'autre)
+class SaleNotCancellableException extends Exception
+{
+}
+
 /**
  * Ventes des articles d'une organisation.
  * La table sales n'a pas de colonne idx_organisation : l'organisation est vérifiée par la jointure avec articles.
@@ -23,7 +28,8 @@ class SaleManager
     }
 
     /**
-     * Dernière vente d'un article (avec le nom de l'acheteur), ou null s'il n'a jamais été vendu.
+     * Dernière vente valable d'un article (avec le nom de l'acheteur), ou null s'il n'a jamais été vendu.
+     * Les ventes annulées (« Remettre disponible ») sont ignorées.
      */
     public function getLatestSale(Article $article): ?Sale
     {
@@ -31,7 +37,7 @@ class SaleManager
             FROM sales
             JOIN articles ON articles.id_article = sales.idx_article
             JOIN clients ON clients.id_client = sales.idx_client
-            WHERE sales.idx_article = :article AND articles.idx_organisation = :organisation
+            WHERE sales.idx_article = :article AND articles.idx_organisation = :organisation AND sales.sa_cancelled_at IS NULL
             ORDER BY sales.sa_date DESC, sales.id_sale DESC LIMIT 1');
         $stmt->execute(['article' => $article->getId(), 'organisation' => $this->organisation->getId()]);
         $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -42,6 +48,33 @@ class SaleManager
         $sale = new Sale();
         $sale->hydrate($ligne);
         return $sale;
+    }
+
+    /**
+     * Annule la vente d'un article vendu (« Remettre disponible ») : la vente est gardée, marquée annulée
+     * (sa_cancelled_at = maintenant), et l'article redevient « Disponible ». Tout ou rien.
+     */
+    public function cancelSale(Article $article): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            // Le WHERE sur le statut évite une double annulation (deux personnes qui valident en même temps)
+            $stmt = $this->pdo->prepare("UPDATE articles SET art_status = 'Disponible'
+                WHERE id_article = :article AND idx_organisation = :organisation AND art_status = 'Vendu'");
+            $stmt->execute(['article' => $article->getId(), 'organisation' => $this->organisation->getId()]);
+            if ($stmt->rowCount() === 0) {
+                throw new SaleNotCancellableException("Article not sold: " . $article->getId());
+            }
+
+            $stmt = $this->pdo->prepare('UPDATE sales SET sa_cancelled_at = NOW() WHERE idx_article = :article AND sa_cancelled_at IS NULL');
+            $stmt->execute(['article' => $article->getId()]);
+
+            $this->pdo->commit();
+        } catch (Exception $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
     }
 
     /**
