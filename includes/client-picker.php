@@ -2,7 +2,8 @@
 /*
     Choix d'un client dans un formulaire : liste des clients + « + Nouveau client » (prénom et nom affichés à la demande).
     Utilisé par les dialogs de prêt et de vente de la fiche d'un objet ; comportement : scripts/client-picker.js.
-    Champs envoyés : client_id (ID ou « new »), client_firstname, client_lastname (lus par includes/client-form.php).
+    Champs envoyés : client_id (ID ou « new »), client_firstname, client_lastname, client_email (facultatif)
+    (lus par includes/client-form.php).
 
     Variables à définir avant l'inclusion :
     - $clients : Client[] de l'organisation ;
@@ -37,6 +38,12 @@ $prefix = htmlspecialchars($client_picker_id);
             <label for="<?= $prefix ?>-client-lastname" class="form-label">Nom</label>
             <input type="text" class="form-control" id="<?= $prefix ?>-client-lastname" name="client_lastname" maxlength="50" autocomplete="off">
             <div class="invalid-feedback">Le nom est requis.</div>
+        </div>
+        <div class="col-12">
+            <label for="<?= $prefix ?>-client-email" class="form-label">E-mail <span class="text-muted">(facultatif)</span></label>
+            <!-- type="email" : le navigateur vérifie le format et affiche le clavier e-mail sur mobile -->
+            <input type="email" class="form-control" id="<?= $prefix ?>-client-email" name="client_email" maxlength="100" autocomplete="off">
+            <div class="invalid-feedback">L'adresse e-mail n'est pas valide.</div>
         </div>
     </div>
 </fieldset>

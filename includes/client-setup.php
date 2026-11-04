@@ -21,6 +21,11 @@
                         <input type="text" class="form-control" id="client-setup-lastname" name="lastname" maxlength="50" autocomplete="off" autocapitalize="words" required>
                         <div class="invalid-feedback">Le nom est requis.</div>
                     </div>
+                    <div class="col-12">
+                        <label for="client-setup-email" class="form-label">E-mail <span class="text-muted">(facultatif)</span></label>
+                        <input type="email" class="form-control" id="client-setup-email" name="email" maxlength="100" autocomplete="off">
+                        <div class="invalid-feedback">L'adresse e-mail n'est pas valide.</div>
+                    </div>
                 </div>
 
                 <div data-role="message" aria-live="polite"></div>
