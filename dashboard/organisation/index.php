@@ -22,8 +22,11 @@ $organisationManager->markAsOpened($organisation);
     Filtre par statut (tous / disponibles / empruntés / vendus / perdus) et par catégorie (aside), et recherche dans les noms d'objets, les codes et les noms de catégories.
     Les objets sont chargés par pages de 30 (api/article/get-articles.php) ; la recherche n'est appliquée qu'avec Entrée,
     des propositions s'affichent pendant la saisie (api/article/search-suggestions.php).
+    Un objet choisi dans les propositions, ou une recherche validée qui ne trouve qu'un objet, ouvre directement sa fiche.
     « Modifier » (à côté des catégories) ouvre le modal includes/modals/category-setup-modal.php.
     « Enregistrer des objets » ouvre le modal includes/modals/article-setup-modal.php ; la liste se recharge après chaque objet enregistré.
+    « Scanner » (dans le header sur grand écran, bouton flottant en bas sur mobile) ouvre
+    includes/modals/quick-scan-modal.php, inclus par le header de l'application (includes/app-header.php).
     Les données sont chargées et filtrées par scripts/organisation-articles.js ;
     le filtre courant est gardé dans l'URL (?statut=…&categorie=…&q=…&page=…).
 */
@@ -35,10 +38,12 @@ $page_title = $organisation->getName() . ' | SuiviMat'; // échappé par head.ph
 $page_description = "Inventaire du matériel de l'organisation";
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 ?>
-<body>
-<?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/header.php'; ?>
+<!-- app : header de l'application (includes/app-header.php : organisation courante, inventaire, scanner) -->
+<!-- has-action-bar : sur mobile, espace en bas de page pour que le bouton flottant « Scanner » ne cache pas le footer -->
+<body class="app has-action-bar">
+<?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-header.php'; ?>
 
-<main class="container py-4" id="organisation-articles" data-organisation-id="<?= $organisation->getId() ?>">
+<main class="container pt-4 organisation-page" id="organisation-articles" data-organisation-id="<?= $organisation->getId() ?>">
     <div class="row g-4">
         <!-- Colonne de gauche : titre, recherche et catégories, fixée sous le header sur grand écran ; catégories en panneau latéral sur mobile -->
         <div class="col-lg-3">
@@ -51,6 +56,7 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#article-setup-modal">+ Enregistrer des objets</button>
                 </div>
 
+                <!-- Recherche (scanner : bouton du header sur grand écran, bouton flottant en bas sur mobile) -->
                 <form class="mb-3" role="search" data-role="search-form">
                     <label for="organisation-search" class="visually-hidden">Rechercher un objet, un code ou une catégorie (Entrée pour valider)</label>
                     <div class="input-group flex-nowrap">
@@ -150,12 +156,19 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
         </section>
     </div>
 
+    <!-- Mobile : bouton « Scanner » flottant, en bas au milieu de l'écran -->
+    <button type="button" class="btn btn-primary btn-lg rounded-pill shadow position-fixed bottom-0 start-50 translate-middle-x mb-3 z-3 d-flex d-lg-none align-items-center gap-2"
+        data-bs-toggle="modal" data-bs-target="#quick-scan-modal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M0 .5A.5.5 0 0 1 .5 0h3a.5.5 0 0 1 0 1H1v2.5a.5.5 0 0 1-1 0zm12 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V1h-2.5a.5.5 0 0 1-.5-.5M.5 12a.5.5 0 0 1 .5.5V15h2.5a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1 0-1H15v-2.5a.5.5 0 0 1 .5-.5M4 4h1v1H4z"/><path d="M7 2H2v5h5zM3 3h3v3H3zm2 8H4v1h1z"/><path d="M7 9H2v5h5zm-4 1h3v3H3zm8-6h1v1h-1z"/><path d="M9 2h5v5H9zm1 1v3h3V3zM8 8v2h1v1H8v1h2v-2h1v2h1v-1h2v-1h-3V8zm2 2H9V9h1zm4 2h-1v1h-2v1h3zm-4 2v-1H8v1z"/><path d="M12 9h2V8h-2z"/></svg>
+        Scanner
+    </button>
+
     <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/article-setup-modal.php'; ?>
     <?php include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/category-setup-modal.php'; ?>
 </main>
 
-<?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/footer.php'; ?>
-<!-- ?v=… change à chaque modification du fichier : le navigateur ne peut pas garder une ancienne version en cache -->
-<script src="/scripts/organisation-articles.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . '/scripts/organisation-articles.js') ?>" defer></script>
+<?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-footer.php'; ?>
+<!-- asset() (config/init.php) : ?v=… change à chaque modification du fichier, pas d'ancienne version en cache -->
+<script src="<?= asset('/scripts/organisation-articles.js') ?>" defer></script>
 </body>
 </html>

@@ -65,4 +65,19 @@
             show(setupModal);
         }
     });
+
+    // Code QR pas encore configuré scanné avec l'appareil photo par un membre : la fiche de l'objet
+    // (dashboard/organisation/article/?code=…) redirige ici avec ?enregistrer=CODE → enregistrement direct de ce code
+    const params = new URLSearchParams(window.location.search);
+    const codeToRegister = params.get("enregistrer");
+    if (codeToRegister) {
+        // Paramètre retiré de l'adresse : un rechargement de la page ne rouvre pas le dialog
+        params.delete("enregistrer");
+        history.replaceState(null, "", `${window.location.pathname}?${params}`);
+        setupModal.addEventListener("shown.bs.modal", () => {
+            // Ajouté à la file par scripts/article-setup.js
+            document.dispatchEvent(new CustomEvent("article-setup-add-code", { detail: { code: codeToRegister } }));
+        }, { once: true });
+        show(setupModal);
+    }
 })();

@@ -30,7 +30,8 @@
 
                 <fieldset class="mb-3">
                     <legend class="form-label fs-6 mb-1">Champs personnalisés <span class="text-muted">(optionnel)</span></legend>
-                    <p class="form-text mt-0">Informations à renseigner pour chaque objet de cette catégorie. Ex. « Nombre de places », « Taille ».</p>
+                    <p class="form-text mt-0">Informations à renseigner pour chaque objet de cette catégorie. Ex. « Nombre de places », « Taille ».
+                        La valeur par défaut s'affiche pour chaque objet de la catégorie dont le champ n'est pas rempli.</p>
                     <div class="d-flex flex-column gap-2 mb-2" data-role="fields"></div>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-role="add-field">+ Ajouter un champ</button>
                 </fieldset>
@@ -46,4 +47,4 @@
 
     <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/edit-category-modal.php'; ?>
 </div>
-<script src="/scripts/category-setup.js" defer></script>
+<script src="<?= asset('/scripts/category-setup.js') ?>" defer></script>

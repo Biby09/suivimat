@@ -40,6 +40,7 @@
 
     let categories = [];
     let editedCategory = null;
+    let fieldCounter = 0; // clé unique des lignes de champ ajoutées : fields[0], fields[1]…
 
     function showMessage(type, text, container = message) {
         container.innerHTML = "";
@@ -108,8 +109,15 @@
                 fields.className = "d-flex flex-wrap gap-1 mt-1";
                 category.fields.forEach((field) => {
                     const badge = document.createElement("span");
-                    badge.className = "badge text-bg-light border";
+                    badge.className = "badge text-bg-light border fw-normal";
                     badge.textContent = field.name;
+                    if (field.default) {
+                        // « Taille · M » : la valeur par défaut en gris après le nom
+                        const value = document.createElement("span");
+                        value.className = "text-muted";
+                        value.textContent = ` · ${field.default}`;
+                        badge.appendChild(value);
+                    }
                     fields.appendChild(badge);
                 });
                 item.appendChild(fields);
@@ -133,40 +141,66 @@
         return categories;
     }
 
-    // Ajoute une ligne de champ personnalisé dans container (formulaire de création ou modal)
-    function addField(container, addButton, inputName, value = "", focus = true) {
+    function textInput(name, value, maxLength, label) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control";
+        input.name = name;
+        input.value = value ?? "";
+        input.maxLength = maxLength;
+        input.placeholder = label;
+        input.setAttribute("aria-label", label);
+        return input;
+    }
+
+    // Ajoute une ligne de champ personnalisé dans container (formulaire de création ou modal) :
+    // nom + valeur par défaut (optionnelle). key : préfixe des noms envoyés, ex. « fields[12] » →
+    // fields[12][name] et fields[12][default] ; PHP les reçoit comme $_POST['fields'][12]['name'] / ['default'].
+    // Mobile : nom sur toute la largeur, valeur par défaut et × en dessous ; à partir de sm : sur une ligne.
+    function addField(container, addButton, key, field = {}, focus = true) {
         if (container.children.length >= MAX_FIELDS) {
             return;
         }
 
         const index = container.children.length + 1;
         const row = document.createElement("div");
-        row.className = "input-group";
+        row.className = "row g-1 align-items-center";
 
-        const input = document.createElement("input");
-        input.type = "text";
-        input.className = "form-control";
-        input.name = inputName;
-        input.value = value;
-        input.maxLength = 45;
-        input.placeholder = `Nom du champ ${index}`;
-        input.setAttribute("aria-label", `Nom du champ ${index}`);
+        const nameCol = document.createElement("div");
+        nameCol.className = "col-12 col-sm-6";
+        const nameInput = textInput(`${key}[name]`, field.name, 45, `Nom du champ ${index}`);
+        nameCol.appendChild(nameInput);
 
+        // Préfixe « Défaut » (input-group-text) : on comprend ce qu'est la valeur même quand la case est remplie
+        const defaultCol = document.createElement("div");
+        defaultCol.className = "col";
+        const defaultGroup = document.createElement("div");
+        defaultGroup.className = "input-group";
+        const defaultPrefix = document.createElement("span");
+        defaultPrefix.className = "input-group-text";
+        defaultPrefix.textContent = "Défaut";
+        defaultGroup.append(defaultPrefix, textInput(`${key}[default]`, field.default, 200, `Valeur par défaut du champ ${index} (optionnel)`));
+        defaultGroup.querySelector("input").placeholder = "optionnel";
+        defaultCol.appendChild(defaultGroup);
+
+        const removeCol = document.createElement("div");
+        removeCol.className = "col-auto";
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "btn btn-outline-danger";
-        remove.setAttribute("aria-label", "Supprimer ce champ");
+        remove.setAttribute("aria-label", `Supprimer le champ ${index}`);
         remove.textContent = "×";
         remove.addEventListener("click", () => {
             row.remove();
             addButton.hidden = false;
         });
+        removeCol.appendChild(remove);
 
-        row.append(input, remove);
+        row.append(nameCol, defaultCol, removeCol);
         container.appendChild(row);
         addButton.hidden = container.children.length >= MAX_FIELDS;
         if (focus) {
-            input.focus();
+            nameInput.focus();
         }
     }
 
@@ -190,7 +224,8 @@
 
         editFieldsContainer.innerHTML = "";
         editAddFieldButton.hidden = false;
-        category.fields.forEach((field) => addField(editFieldsContainer, editAddFieldButton, `fields[${field.id}]`, field.name, false));
+        // Champs existants : clé = ID du champ (le serveur sait ainsi lequel est modifié)
+        category.fields.forEach((field) => addField(editFieldsContainer, editAddFieldButton, `fields[${field.id}]`, field, false));
 
         if (parentModalElement) {
             // data-editing : le modal parent se ferme seulement le temps de la modification
@@ -297,8 +332,9 @@
         await refreshAfterChange();
     });
 
-    addFieldButton.addEventListener("click", () => addField(fieldsContainer, addFieldButton, "fields[]"));
-    editAddFieldButton.addEventListener("click", () => addField(editFieldsContainer, editAddFieldButton, "new_fields[]"));
+    // fieldCounter++ : renvoie la valeur actuelle puis l'augmente de 1 (chaque nouvelle ligne a sa propre clé)
+    addFieldButton.addEventListener("click", () => addField(fieldsContainer, addFieldButton, `fields[${fieldCounter++}]`));
+    editAddFieldButton.addEventListener("click", () => addField(editFieldsContainer, editAddFieldButton, `new_fields[${fieldCounter++}]`));
 
     loadCategories();
 })();

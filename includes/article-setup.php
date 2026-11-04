@@ -78,4 +78,7 @@ $article_setup_categories_button = $article_setup_categories_button ?? false;
         </div>
     </div>
 </div>
-<script src="/scripts/article-setup.js" defer></script>
+<!-- resize-photo.js avant article-setup.js : les scripts « defer » s'exécutent dans l'ordre de la page -->
+<script src="<?= asset('/scripts/resize-photo.js') ?>" defer></script>
+<script src="<?= asset('/scripts/category-fields.js') ?>" defer></script>
+<script src="<?= asset('/scripts/article-setup.js') ?>" defer></script>

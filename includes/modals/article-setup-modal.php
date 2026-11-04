@@ -47,4 +47,4 @@ include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/qr-next-steps-modal.php';
 include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/category-setup-modal.php';
 ?>
 
-<script src="/scripts/article-setup-modal.js" defer></script>
+<script src="<?= asset('/scripts/article-setup-modal.js') ?>" defer></script>

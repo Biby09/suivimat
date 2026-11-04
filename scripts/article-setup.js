@@ -80,12 +80,12 @@
         }
     }
 
-    // Champs personnalisés de la catégorie choisie, pré-remplis avec les valeurs de l'objet
+    // Champs personnalisés de la catégorie choisie et de ses parentes (scripts/category-fields.js),
+    // pré-remplis avec les valeurs de l'objet
     function renderFields(values = {}) {
         fieldsContainer.innerHTML = "";
-        const category = categories.find((c) => String(c.id) === categorySelect.value);
 
-        category?.fields.forEach((field) => {
+        window.categoryFields(Number(categorySelect.value), categories).forEach((field) => {
             const id = `article-setup-field-${field.id}`;
             const wrapper = document.createElement("div");
             wrapper.className = "mb-3";
@@ -94,6 +94,13 @@
             label.className = "form-label";
             label.htmlFor = id;
             label.textContent = field.name;
+            if (field.inheritedFrom) {
+                // Champ hérité d'une catégorie parente : son nom en gris après le libellé
+                const from = document.createElement("span");
+                from.className = "text-muted small ms-1";
+                from.textContent = `(${field.inheritedFrom})`;
+                label.appendChild(from);
+            }
 
             const input = document.createElement("input");
             input.type = "text";
@@ -102,26 +109,13 @@
             input.name = `fields[${field.id}]`;
             input.maxLength = 200;
             input.value = values[field.id] ?? "";
+            // Valeur par défaut : affichée en gris dans le champ vide (pas copiée dans l'objet ; laissé vide,
+            // le champ continue d'afficher la valeur par défaut de la catégorie, même si elle change plus tard)
+            input.placeholder = field.default ? `Par défaut : ${field.default}` : "";
 
             wrapper.append(label, input);
             fieldsContainer.appendChild(wrapper);
         });
-    }
-
-    // Réduit une photo avant l'envoi (limite d'upload du serveur, données mobiles)
-    async function resizePhoto(file) {
-        try {
-            const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-            const ratio = Math.min(1, PHOTO_MAX_SIZE / Math.max(bitmap.width, bitmap.height));
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.round(bitmap.width * ratio);
-            canvas.height = Math.round(bitmap.height * ratio);
-            canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-            bitmap.close();
-            return await new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject()), "image/jpeg", 0.85));
-        } catch {
-            return file; // navigateur incapable de réduire : le serveur s'en charge
-        }
     }
 
     function photoThumbnail(url, alt) {
@@ -179,7 +173,7 @@
 
         photoInput.disabled = true;
         for (const file of accepted.slice(0, room)) {
-            const blob = await resizePhoto(file);
+            const blob = await window.resizePhoto(file, PHOTO_MAX_SIZE); // scripts/resize-photo.js
             newPhotos.push({ blob, url: URL.createObjectURL(blob) });
         }
         photoInput.value = "";
@@ -288,6 +282,8 @@
     }
 
     scannerElement.addEventListener("code-scanned", (e) => addCode(e.detail.code));
+    // Code pas encore enregistré lu par le scanner rapide (scripts/quick-scan-modal.js) : ajouté à la file
+    document.addEventListener("article-setup-add-code", (e) => addCode(e.detail.code));
     // Catégorie créée ailleurs sur la page (includes/category-setup.php)
     document.addEventListener("categories-changed", (e) => setCategories(e.detail.categories));
     categorySelect.addEventListener("change", () => {

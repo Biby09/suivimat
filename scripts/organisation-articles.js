@@ -188,6 +188,11 @@
 
     // ---- Objets ----
 
+    // Fiche de l'objet (même adresse que le scanner rapide : scripts/quick-scan-modal.js)
+    function openArticle(articleId) {
+        window.location.href = `/dashboard/organisation/article/?article_id=${encodeURIComponent(articleId)}`;
+    }
+
     function statusClass(status) {
         // Couleur du badge selon art_status ; statut inconnu : gris
         return { "Disponible": "text-bg-success", "Emprunté": "text-bg-warning", "Vendu": "text-bg-dark", "Perdu": "text-bg-danger" }[status] ?? "text-bg-secondary";
@@ -239,9 +244,7 @@
         col.appendChild(card);
         
 
-        col.addEventListener("click", () => {
-            window.location.href = `/dashboard/organisation/article.php?article_id=${encodeURIComponent(article.id)}`;
-        });
+        col.addEventListener("click", () => openArticle(article.id));
 
         return col;
     }
@@ -304,7 +307,8 @@
         list.appendChild(pageItem("›", current + 1, { disabled: current === last, ariaLabel: "Page suivante" }));
     }
 
-    async function loadArticles({ scroll = false } = {}) {
+    // openSingle : recherche validée par l'utilisateur ; un seul objet trouvé → sa fiche s'ouvre directement
+    async function loadArticles({ scroll = false, openSingle = false } = {}) {
         const requestId = ++articlesRequest;
         const params = new URLSearchParams({ organisation_id: organisationId, page });
         if (selected !== ALL) {
@@ -331,6 +335,14 @@
             return;
         }
         showMessage(null);
+
+        if (openSingle && query && data.total === 1) {
+            // L'URL de la liste est d'abord mise à jour (?q=…) : le bouton « retour » du navigateur ramène à cette
+            // recherche, sans rouvrir la fiche (au chargement de la page, openSingle vaut false)
+            updateUrl();
+            openArticle(data.articles[0].id);
+            return;
+        }
 
         counts = data.counts;
         page = data.page;
@@ -395,12 +407,13 @@
         loadArticles();
     }
 
+    // Recherche validée (Entrée, loupe, « Rechercher « … » ») : un seul résultat ouvre directement la fiche
     function applySearch(text) {
         hideSuggestions();
         searchInput.value = text;
         query = text.trim();
         page = 1;
-        loadArticles();
+        loadArticles({ openSingle: true });
     }
 
     // ---- URL : un rechargement ou un lien partagé retombe sur la même vue ----
@@ -520,10 +533,10 @@
         if (data.articles.length) {
             addSuggestionHeader("Objets");
             data.articles.forEach((article) => {
+                // Objet choisi (clic, ou flèches puis Entrée) : ouverture directe de sa fiche
                 addSuggestion(article.name, `${article.code}${article.category_id ? ` · ${categoryPathLabel(article.category_id)}` : ""}`, () => {
-                    // Recherche par code : seul cet objet est affiché, quelle que soit la catégorie
-                    selected = ALL;
-                    applySearch(article.code);
+                    hideSuggestions();
+                    openArticle(article.id);
                 });
             });
         }

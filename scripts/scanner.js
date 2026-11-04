@@ -229,7 +229,9 @@
         }
     }
 
+    // Plusieurs scanners sur la page : ce fichier est alors chargé plusieurs fois (une fois par includes/scanner.php).
+    // ??= ne crée le Scanner que si l'élément n'en a pas encore, sinon chaque code serait émis deux fois
     document.querySelectorAll("[data-scanner]").forEach((element) => {
-        element.scanner = new Scanner(element);
+        element.scanner ??= new Scanner(element);
     });
 })();

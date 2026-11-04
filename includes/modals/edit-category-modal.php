@@ -28,7 +28,8 @@
 
                     <fieldset class="mb-3">
                         <legend class="form-label fs-6 mb-1">Champs personnalisés</legend>
-                        <p class="form-text mt-0">Supprimer un champ efface aussi les valeurs déjà saisies pour ce champ.</p>
+                        <p class="form-text mt-0">La valeur par défaut s'affiche pour chaque objet de la catégorie (et des sous-catégories) dont le champ n'est pas rempli.
+                            Supprimer un champ efface aussi les valeurs déjà saisies pour ce champ.</p>
                         <div class="d-flex flex-column gap-2 mb-2" data-role="edit-fields"></div>
                         <button type="button" class="btn btn-sm btn-outline-primary" data-role="edit-add-field">+ Ajouter un champ</button>
                     </fieldset>

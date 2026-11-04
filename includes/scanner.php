@@ -37,4 +37,5 @@ $scanner_id = $scanner_id ?? 'scanner';
         </form>
     </div>
 </div>
-<script src="/scripts/scanner.js" defer></script>
+<!-- Inclus une fois par scanner : scanner.js ignore les scanners déjà initialisés -->
+<script src="<?= asset('/scripts/scanner.js') ?>" defer></script>
