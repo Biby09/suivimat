@@ -346,9 +346,57 @@ footer{
     font-size: $font-size-lg;
 }
 
-// Paramètres de l'organisation : un clic dans le sommaire (#members…) arrête la section sous le header fixe, pas dessous
+// Paramètres de l'organisation (dashboard/organisation/settings/)
+// Sommaire collé sous le header : en colonne sur ordinateur, en pastilles défilables sur mobile.
+// Un élément sticky ne reste collé que dans les limites de son parent :
+// - mobile : c'est l'aside qui colle (son parent, la .row, contient toute la page) ;
+// - ordinateur : l'aside est une colonne aussi haute que la page, c'est la nav à l'intérieur qui colle.
+@include media-breakpoint-down(lg) {
+    .settings-aside {
+        position: sticky;
+        top: var(--header-height);
+        z-index: $zindex-sticky;
+        background-color: var(--bs-body-bg);  // les cartes passent dessous sans se voir à travers
+        border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+    }
+}
+
+.settings-nav {
+    padding-block: map-get($spacers, 2);
+    scrollbar-width: none;                // pas de barre de défilement visible (Firefox)
+
+    &::-webkit-scrollbar {                // (Chrome, Safari)
+        display: none;
+    }
+
+    // « Supprimer » en rouge, rouge plein quand la section est visible
+    .settings-nav-danger {
+        color: var(--bs-danger);
+
+        &.active {
+            color: #fff;
+            background-color: var(--bs-danger);
+        }
+    }
+}
+
+@include media-breakpoint-up(lg) {
+    .settings-nav {
+        position: sticky;
+        top: calc(var(--header-height) + #{map-get($spacers, 3)});
+        padding-block: 0;
+    }
+}
+
+// Un clic dans le sommaire (#members…) arrête la section sous le header fixe (et, sur mobile, sous la barre de pastilles)
 .settings-section {
-    scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
+    scroll-margin-top: calc(var(--header-height) + 4.5rem);
+}
+
+@include media-breakpoint-up(lg) {
+    .settings-section {
+        scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
+    }
 }
 
 // Pages avec un élément fixé en bas de l'écran sur mobile : barre d'actions de la fiche d'un objet,

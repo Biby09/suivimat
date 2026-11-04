@@ -4,7 +4,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php'; // $user, $organisa
 
 /*
     Paramètres d'une organisation : /dashboard/organisation/settings/?id=… (engrenage à côté du sélecteur d'organisation
-    dans le header). Tous les membres peuvent les modifier. Pensée mobile d'abord : une carte par sujet, sommaire en pastilles.
+    dans le header). Tous les membres peuvent les modifier. Une carte par sujet ; sommaire en colonne
+    collée à gauche (ordinateur) ou en pastilles collées sous le header (mobile).
     - Général : nom de l'organisation
     - Membres : liste, invitation par e-mail, invitations en attente (annuler), retirer un membre, quitter
     - Prêts : durée par défaut, rappel au client 2 jours avant l'échéance (cron/send-loan-reminders.php), conditions du contrat
@@ -47,17 +48,22 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-header.php'; ?>
 
 <main class="container py-4" id="organisation-settings" data-organisation-id="<?= $organisation->getId() ?>">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <p class="text-muted mb-0"><?= htmlspecialchars($organisation->getName()) ?></p>
-            <h1 class="fs-3 mb-3">Paramètres de l'organisation</h1>
+    <p class="text-muted mb-0"><?= htmlspecialchars($organisation->getName()) ?></p>
+    <h1 class="fs-3 mb-3">Paramètres de l'organisation</h1>
 
-            <!-- Sommaire : pastilles défilables au doigt, chacune mène à sa section (ancre #…) -->
-            <nav class="loans-filters d-flex gap-2 overflow-auto pb-2 mb-3" aria-label="Sections des paramètres">
+    <div class="row">
+        <!-- Sommaire : chaque lien mène à sa section (ancre #…) ; la section visible est mise en évidence
+             (scripts/organisation-settings.js).
+             Ordinateur : colonne de gauche collée sous le header. Mobile : pastilles défilables au doigt, collées sous le header. -->
+        <aside class="settings-aside col-lg-3 mb-3 mb-lg-0">
+            <nav class="settings-nav nav nav-pills flex-nowrap flex-lg-column gap-1 overflow-auto" id="settings-nav" aria-label="Sections des paramètres">
                 <?php foreach ($sections as $anchor => $label): ?>
-                    <a class="btn btn-sm rounded-pill text-nowrap <?= $anchor === 'danger' ? 'btn-outline-danger' : 'btn-outline-primary' ?>" href="#<?= $anchor ?>"><?= $label ?></a>
+                    <a class="nav-link text-nowrap <?= $anchor === 'danger' ? 'settings-nav-danger' : '' ?>" href="#<?= $anchor ?>"><?= $label ?></a>
                 <?php endforeach; ?>
             </nav>
+        </aside>
+
+        <div class="col-lg-8">
 
             <!-- ===== Général ===== -->
             <form class="card mb-4 settings-section" id="general" novalidate data-role="settings-form" data-url="/api/organisation/update-settings.php" data-success="Nom enregistré." data-reload>

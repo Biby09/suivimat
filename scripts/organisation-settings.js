@@ -124,6 +124,57 @@
         });
     });
 
+    // ---- Sommaire : met en évidence (classe active) le lien de la section visible ----
+    // Pas le ScrollSpy de Bootstrap : les dernières sections (Codes QR, Supprimer) sont trop courtes pour atteindre
+    // le haut de l'écran, elles ne seraient jamais actives. Règles :
+    // - lien cliqué : il reste actif jusqu'à ce que l'utilisateur fasse défiler lui-même (molette, doigt, clavier) ;
+    // - sinon : dernière section dont le haut a dépassé le tiers supérieur de l'écran ; en bas de page, la dernière section.
+    const nav = document.getElementById("settings-nav");
+    const links = [...nav.querySelectorAll("a[href^='#']")];
+    const sections = links.map((link) => document.querySelector(link.getAttribute("href")));
+    let clickedIndex = null;
+    let activeIndex = null;
+
+    function setActive(index) {
+        if (index === activeIndex) {
+            return;
+        }
+        activeIndex = index;
+        links.forEach((link, i) => {
+            link.classList.toggle("active", i === index);
+            // aria-current : les lecteurs d'écran annoncent la section courante
+            i === index ? link.setAttribute("aria-current", "true") : link.removeAttribute("aria-current");
+        });
+        // Mobile : la pastille active vient au centre de la barre (scrollTo sur la barre seulement, pas sur la page)
+        const link = links[index];
+        nav.scrollTo({ left: link.offsetLeft - (nav.clientWidth - link.offsetWidth) / 2, behavior: "smooth" });
+    }
+
+    function updateActive() {
+        if (clickedIndex !== null) {
+            setActive(clickedIndex);
+            return;
+        }
+        const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+        if (atBottom) {
+            setActive(sections.length - 1);
+            return;
+        }
+        const limit = window.innerHeight / 3;
+        // findLastIndex : dernier élément qui respecte la condition (−1 si aucun → première section)
+        setActive(Math.max(0, sections.findLastIndex((section) => section.getBoundingClientRect().top <= limit)));
+    }
+
+    links.forEach((link, i) => link.addEventListener("click", () => {
+        clickedIndex = i;
+        setActive(i);
+    }));
+    // Défilement fait par l'utilisateur : le choix par clic ne compte plus
+    ["wheel", "touchmove", "keydown"].forEach((type) => window.addEventListener(type, () => { clickedIndex = null; }, { passive: true }));
+    // passive : on promet de ne pas bloquer le défilement, le navigateur ne nous attend pas
+    window.addEventListener("scroll", updateActive, { passive: true });
+    updateActive();
+
     // ---- Message gardé avant un rechargement ----
     const flash = JSON.parse(sessionStorage.getItem(FLASH_KEY) ?? "null");
     if (flash) {
