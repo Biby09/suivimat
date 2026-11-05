@@ -4,13 +4,14 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/config/auth.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/client/clientManager.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/image/imageManager.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/loan/loanManager.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/class/sale/saleManager.php';
 
 /*
     Page d'un client : /dashboard/organisation/clients/client.php?client_id=…
     Ouverte depuis la liste des clients (dashboard/organisation/clients/).
     - « Modifier » : prénom et nom (includes/modals/client-form-modal.php) ;
     - prêts en cours : mêmes cartes que la page « Prêts en cours » (includes/loan-card.php), avec le bouton « Retour » ;
-    - historique : prêts terminés, du plus récent au plus ancien ; un clic ouvre la fiche de l'objet.
+    - historique : prêts terminés et achats (ventes non annulées), du plus récent au plus ancien ; un clic ouvre la fiche de l'objet.
 */
 
 try {
@@ -27,6 +28,17 @@ $loans = (new LoanManager($mysqlClient, $organisation))->getLoansForClient($clie
 // array_filter garde les prêts pour lesquels la fonction renvoie true ; array_values renumérote 0, 1, 2…
 $ongoingLoans = array_values(array_filter($loans, fn(Loan $loan) => $loan->isOngoing()));
 $pastLoans = array_values(array_filter($loans, fn(Loan $loan) => !$loan->isOngoing()));
+// Historique : prêts terminés (date de retour) et achats (date de vente) mélangés, du plus récent au plus ancien
+$history = [];
+foreach ($pastLoans as $loan) {
+    $history[] = ['date' => $loan->getEndDate(), 'loan' => $loan, 'sale' => null];
+}
+foreach ((new SaleManager($mysqlClient, $organisation))->getSalesForClient($client) as $sale) {
+    $history[] = ['date' => $sale->getDate(), 'loan' => null, 'sale' => $sale];
+}
+// usort trie avec une fonction de comparaison ; <=> (« spaceship ») renvoie -1, 0 ou 1.
+// $b <=> $a (et non $a <=> $b) : ordre décroissant. Les dates AAAA-MM-JJ se comparent comme des chaînes.
+usort($history, fn(array $a, array $b) => $b['date'] <=> $a['date']);
 $coverUrls = (new ImageManager($mysqlClient))->getCoverUrls(array_map(fn(Loan $loan) => $loan->getArticleId(), $ongoingLoans));
 $clientsUrl = '/dashboard/organisation/clients/?id=' . $organisation->getId();
 ?>
@@ -88,21 +100,31 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
 
     <section aria-labelledby="client-history-title">
         <h2 class="fs-6 text-uppercase text-muted mb-2" id="client-history-title">Historique</h2>
-        <?php if (!$pastLoans): ?>
-            <p class="text-muted">Aucun prêt terminé.</p>
+        <?php if (!$history): ?>
+            <p class="text-muted">Aucun prêt terminé ni achat.</p>
         <?php else: ?>
             <div class="list-group">
-                <?php foreach ($pastLoans as $loan): ?>
+                <?php foreach ($history as $entry): ?>
+                    <?php
+                    // Une ligne = un prêt terminé ou un achat : l'objet concerné est lu sur l'un ou l'autre
+                    $loan = $entry['loan'];
+                    $sale = $entry['sale'];
+                    $item = $loan ?? $sale;
+                    ?>
                     <a class="list-group-item list-group-item-action d-flex align-items-center justify-content-between gap-2"
-                        href="/dashboard/organisation/article/?article_id=<?= $loan->getArticleId() ?>">
+                        href="/dashboard/organisation/article/?article_id=<?= $item->getArticleId() ?>">
                         <span style="min-width: 0;">
-                            <span class="d-block fw-semibold text-truncate"><?= htmlspecialchars($loan->getArticleName() ?? 'Objet') ?></span>
+                            <span class="d-block fw-semibold text-truncate"><?= htmlspecialchars($item->getArticleName() ?? 'Objet') ?></span>
                             <span class="d-block small text-muted">
-                                <span class="font-monospace"><?= htmlspecialchars($loan->getArticleCode() ?? '') ?></span>
-                                · du <?= formatDate($loan->getStartDate()) ?> au <?= formatDate($loan->getEndDate()) ?>
+                                <span class="font-monospace"><?= htmlspecialchars($item->getArticleCode() ?? '') ?></span>
+                                <?php if ($sale): ?>
+                                    · <span class="badge text-bg-secondary">Vendu</span>
+                                <?php else: ?>
+                                    · du <?= formatDate($loan->getStartDate()) ?> au <?= formatDate($loan->getEndDate()) ?>
+                                <?php endif; ?>
                             </span>
                         </span>
-                        <?php if ($loan->getDamages()): ?>
+                        <?php if ($loan && $loan->getDamages()): ?>
                             <!-- Détail des dégâts (description, photos) : sur la fiche de l'objet -->
                             <span class="badge text-bg-danger flex-shrink-0">Dégâts (<?= count($loan->getDamages()) ?>)</span>
                         <?php endif; ?>

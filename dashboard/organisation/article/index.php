@@ -338,9 +338,13 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
         <?php else: ?>
             <ul class="list-group">
                 <?php foreach ($loans as $loan): ?>
-                    <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                    <!-- list-group-item-action : effet de survol ; toute la ligne mène à la page du client (lien stretched-link ci-dessous) -->
+                    <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2">
                         <div class="text-break">
-                            <div class="fw-semibold"><?= htmlspecialchars($loan->getClientName()) ?></div>
+                            <div class="fw-semibold">
+                                <a href="/dashboard/organisation/clients/client.php?client_id=<?= $loan->getClientId() ?>"
+                                    class="stretched-link text-reset text-decoration-none"><?= htmlspecialchars($loan->getClientName()) ?></a>
+                            </div>
                             <div class="small text-muted">
                                 <?php if ($loan->isOngoing()): ?>
                                     Depuis le <?= formatDate($loan->getStartDate()) ?>
@@ -356,7 +360,8 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap justify-content-end gap-1 flex-shrink-0">
+                        <!-- position-relative + z-2 : les boutons passent au-dessus du lien qui couvre la ligne (sinon le clic irait au client) -->
+                        <div class="d-flex flex-wrap justify-content-end gap-1 flex-shrink-0 position-relative z-2">
                             <!-- Contrat de prêt en PDF, dans un nouvel onglet (api/loan/contract.php) -->
                             <a class="btn btn-sm btn-outline-secondary text-nowrap" href="/api/loan/contract.php?loan_id=<?= $loan->getId() ?>" target="_blank" rel="noopener">Contrat</a>
                             <?php if ($loan->isOngoing()): ?>

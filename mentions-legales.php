@@ -45,9 +45,10 @@ $page_description = 'Mentions légales et protection des données de SuiviMat.';
                 </p>
                 <p>
                     Le site et ses données sont hébergés en Suisse, sur les serveurs d'un hébergeur suisse (voir « Hébergement »).
-                    Les données enregistrées dans l'application ne sont pas transférées à l'étranger. Seules exceptions : la bibliothèque
-                    de lecture des codes QR, chargée dans certains cas depuis un service externe (voir « Services externes »), et
-                    les e-mails envoyés aux membres d'une organisation, qui sont remis aux fournisseurs de messagerie qu'ils ont choisis.
+                    Les données enregistrées dans l'application ne sont pas transférées à l'étranger. Seules exceptions : la vérification
+                    anti-robot de la page d'inscription et la bibliothèque de lecture des codes QR, fournies par des services externes
+                    (voir « Services externes »), ainsi que les e-mails envoyés par l'application (aux membres d'une organisation ou à ses
+                    clients), qui sont remis aux fournisseurs de messagerie des destinataires.
                 </p>
 
                 <h3 class="fs-5 mt-4">Données enregistrées</h3>
@@ -59,9 +60,10 @@ $page_description = 'Mentions légales et protection des données de SuiviMat.';
                     <li><strong>Matériel</strong> : nom, catégorie, informations complémentaires et photos des objets,
                         ainsi que l'historique
                         des prêts, retours, dégâts, ventes et pertes.</li>
-                    <li><strong>Clients des organisations</strong> : prénom et nom des personnes à qui le matériel est
-                        prêté ou vendu,
-                        saisis par les membres de l'organisation.</li>
+                    <li><strong>Clients des organisations</strong> : prénom, nom et, facultativement, adresse e-mail des
+                        personnes à qui le matériel est prêté ou vendu, saisis par les membres de l'organisation. L'adresse
+                        e-mail sert uniquement à envoyer un rappel avant la date de retour prévue, si l'organisation a activé
+                        cette option.</li>
                 </ul>
                 <p>
                     Les photos sont réduites et converties au format JPEG lors de l'envoi : leurs métadonnées, dont la
@@ -79,19 +81,32 @@ $page_description = 'Mentions légales et protection des données de SuiviMat.';
                     l'application.
                 </p>
 
-                <h3 class="fs-5 mt-4">Cookie</h3>
+                <h3 class="fs-5 mt-4">Cookies</h3>
                 <p>
-                    SuiviMat utilise un seul cookie, nécessaire au fonctionnement : le cookie de session, qui maintient
-                    la connexion
-                    pendant 12 heures au maximum. Aucun cookie publicitaire ni outil de mesure d'audience n'est utilisé.
+                    SuiviMat dépose un seul cookie, nécessaire au fonctionnement : le cookie de session, qui maintient
+                    la connexion pendant 12 heures au maximum. Aucun cookie publicitaire ni outil de mesure d'audience n'est utilisé.
+                </p>
+                <p>
+                    Sur la page d'inscription uniquement, le service Google reCAPTCHA (voir ci-dessous) peut déposer ses propres
+                    cookies.
                 </p>
 
-                <h3 class="fs-5 mt-4">Services externes</h3>
+                <!-- id : lien « En savoir plus » de la page d'inscription (auth/register/) -->
+                <h3 class="fs-5 mt-4" id="services-externes">Services externes</h3>
                 <p>
-                    Pour lire les codes QR, le navigateur utilise sa fonction intégrée lorsqu'elle existe. Sinon, la
-                    bibliothèque jsQR est
-                    chargée depuis le service <a href="https://www.jsdelivr.com" target="_blank"
-                        rel="noopener noreferrer">jsDelivr</a>,
+                    <strong>Google reCAPTCHA</strong> : pour empêcher la création automatique de comptes par des robots, la page
+                    d'inscription utilise le service reCAPTCHA de Google Ireland Limited (Gordon House, Barrow Street, Dublin 4, Irlande).
+                    Il est chargé uniquement sur cette page. Pour vérifier que l'inscription est faite par une personne, Google reçoit
+                    notamment l'adresse IP de l'appareil, des informations sur le navigateur et sur l'utilisation de la page, et peut
+                    déposer des cookies. Ces données peuvent être transférées aux États-Unis. Elles sont traitées par Google selon sa
+                    <a href="https://policies.google.com/privacy?hl=fr" target="_blank" rel="noopener noreferrer">politique de confidentialité</a>
+                    et ses <a href="https://policies.google.com/terms?hl=fr" target="_blank" rel="noopener noreferrer">conditions d'utilisation</a>.
+                    Les autres pages, et en particulier l'application, n'utilisent pas reCAPTCHA.
+                </p>
+                <p>
+                    <strong>jsDelivr</strong> : pour lire les codes QR, le navigateur utilise sa fonction intégrée lorsqu'elle existe.
+                    Sinon, la bibliothèque jsQR est chargée depuis le service
+                    <a href="https://www.jsdelivr.com" target="_blank" rel="noopener noreferrer">jsDelivr</a>,
                     qui reçoit alors l'adresse IP de l'appareil.
                 </p>
 

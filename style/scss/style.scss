@@ -453,6 +453,12 @@ footer{
     scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
 }
 
+// Titres visés par une ancre (ex. /mentions-legales.php#services-externes) : arrêtés sous le header fixe, pas dessous
+h2[id],
+h3[id] {
+    scroll-margin-top: calc(var(--header-height) + #{map-get($spacers, 3)});
+}
+
 //Ombre des cartes sur l'index des organisations (dashboard/organisation/index.php)
 .shadow-hover{
     transition : box-shadow 0.1s ease-in-out;

@@ -60,7 +60,11 @@ $page_title = "Inscription - SuiviMat";
                                 data-sitekey="<?= htmlspecialchars(getenv('RECAPTCHA_SITE_KEY'), ENT_QUOTES, 'UTF-8') ?>">
                             </div>
                         </div>
-
+                        <!-- Information sur reCAPTCHA (Google) : détails dans les mentions légales, section « Services externes » -->
+                        <p class="small text-muted text-center mb-3">
+                            Cette page utilise Google reCAPTCHA pour vérifier que vous n'êtes pas un robot.
+                            <a href="/mentions-legales.php#services-externes">En savoir plus</a>
+                        </p>
 
                         <button type="submit" class="btn btn-primary w-100">S'inscrire</button>
                     </form>

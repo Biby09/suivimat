@@ -51,6 +51,29 @@ class SaleManager
     }
 
     /**
+     * Achats d'un client (ventes valables, avec le nom et le code de l'objet), du plus récent au plus ancien.
+     * Les ventes annulées (« Remettre disponible ») sont ignorées.
+     */
+    public function getSalesForClient(Client $client): array
+    {
+        $stmt = $this->pdo->prepare('SELECT sales.*, articles.art_name, articles.art_code
+            FROM sales
+            JOIN articles ON articles.id_article = sales.idx_article
+            WHERE sales.idx_client = :client AND articles.idx_organisation = :organisation AND sales.sa_cancelled_at IS NULL
+            ORDER BY sales.sa_date DESC, sales.id_sale DESC');
+        $stmt->execute(['client' => $client->getId(), 'organisation' => $this->organisation->getId()]);
+        $sales = [];
+
+        while ($ligne = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $sale = new Sale();
+            $sale->hydrate($ligne);
+            $sales[] = $sale;
+        }
+
+        return $sales;
+    }
+
+    /**
      * Annule la vente d'un article vendu (« Remettre disponible ») : la vente est gardée, marquée annulée
      * (sa_cancelled_at = maintenant), et l'article redevient « Disponible ». Tout ou rien.
      */

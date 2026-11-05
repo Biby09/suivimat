@@ -11,6 +11,8 @@ class Sale
     private string $clientName;
     private string $date;            // AAAA-MM-JJ
     private ?string $cancelledAt;    // date d'annulation (« Remettre disponible ») ; null = vente valable
+    private ?string $articleName;    // nom et code de l'objet : seulement si lus avec la vente (getSalesForClient), sinon null
+    private ?string $articleCode;
 
     public function hydrate(array $ligne): void
     {
@@ -20,6 +22,8 @@ class Sale
         $this->clientName = trim(($ligne['cli_firstname'] ?? '') . ' ' . ($ligne['cli_lastname'] ?? ''));
         $this->date = $ligne['sa_date'];
         $this->cancelledAt = $ligne['sa_cancelled_at'] ?? null;
+        $this->articleName = $ligne['art_name'] ?? null;
+        $this->articleCode = $ligne['art_code'] ?? null;
     }
 
     public function getId(): int
@@ -50,5 +54,15 @@ class Sale
     public function getCancelledAt(): ?string
     {
         return $this->cancelledAt;
+    }
+
+    public function getArticleName(): ?string
+    {
+        return $this->articleName;
+    }
+
+    public function getArticleCode(): ?string
+    {
+        return $this->articleCode;
     }
 }
