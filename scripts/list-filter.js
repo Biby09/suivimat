@@ -6,7 +6,9 @@
 //     data-categories="late soon"  catégories de l'élément (pour les filtres), séparées par des espaces
 //     data-search="…"              texte cherché, en minuscules
 //     data-sort-xxx="…"            valeur de tri « xxx » (ex. data-sort-client) ; data-sort-order = ordre par défaut
-// - [data-role='filters'] (optionnel) : boutons radio, valeur « all » ou une catégorie
+// - [data-role='filters'] (optionnel) : boutons radio, valeur « all » ou une catégorie.
+//     Un bouton avec data-exclusive (ex. « archived ») est un filtre exclusif : les éléments de cette catégorie
+//     ne sont affichés que par ce filtre, jamais par « Tous » ni par les autres filtres
 // - [data-role='search'] (optionnel) : champ de recherche ; chaque mot tapé doit apparaître dans data-search
 // - [data-role='sort'] (optionnel) : liste déroulante, valeur « xxx » ou « xxx:desc » (ordre décroissant)
 // - [data-role='count'] (optionnel) : nombre d'éléments visibles, avec data-one="prêt" et data-many="prêts"
@@ -23,6 +25,8 @@ document.querySelectorAll("[data-list-filter]").forEach((root) => {
     const count = root.querySelector("[data-role='count']");
     const noResults = root.querySelector("[data-role='no-results']");
     const items = [...list.querySelectorAll("[data-item]")];
+    // Valeurs des filtres exclusifs, ex. ["archived"]
+    const exclusive = filters ? [...filters.querySelectorAll("input[data-exclusive]")].map((input) => input.value) : [];
 
     // data-sort-client → dataset.sortClient : « client » → « sortClient »
     const sortKey = (name) => "sort" + name.charAt(0).toUpperCase() + name.slice(1);
@@ -42,7 +46,9 @@ document.querySelectorAll("[data-list-filter]").forEach((root) => {
         let visible = 0;
         items.forEach((item) => {
             const categories = (item.dataset.categories ?? "").split(" ");
-            const matchesFilter = filter === "all" || categories.includes(filter);
+            // Élément d'une catégorie exclusive : visible seulement quand ce filtre-là est choisi
+            const isExclusive = categories.some((category) => exclusive.includes(category));
+            const matchesFilter = (filter === "all" || categories.includes(filter)) && (!isExclusive || exclusive.includes(filter));
             const matchesSearch = words.every((word) => item.dataset.search.includes(word));
             item.hidden = !(matchesFilter && matchesSearch);
             // d-none en plus de hidden : un élément avec d-flex (display: flex !important) ignorerait hidden seul
@@ -84,4 +90,7 @@ document.querySelectorAll("[data-list-filter]").forEach((root) => {
         }
         update();
     });
+
+    // Premier affichage : applique le filtre par défaut (masque par exemple les éléments des filtres exclusifs)
+    update();
 });

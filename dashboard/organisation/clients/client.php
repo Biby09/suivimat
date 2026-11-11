@@ -10,6 +10,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/class/sale/saleManager.php';
     Page d'un client : /dashboard/organisation/clients/client.php?client_id=…
     Ouverte depuis la liste des clients (dashboard/organisation/clients/).
     - « Modifier » : prénom et nom (includes/modals/client-form-modal.php) ;
+    - « Archiver » / « Réactiver » (menu ⋯) : le client archivé n'est plus proposé pour un prêt ou une vente,
+      son historique est conservé (scripts/client-archive.js, api/client/archive-client.php) ;
     - prêts en cours : mêmes cartes que la page « Prêts en cours » (includes/loan-card.php), avec le bouton « Retour » ;
     - historique : prêts terminés et achats (ventes non annulées), du plus récent au plus ancien ; un clic ouvre la fiche de l'objet.
 */
@@ -66,7 +68,12 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
             <?= htmlspecialchars(mb_strtoupper(mb_substr($client->getFirstname(), 0, 1) . mb_substr($client->getLastname(), 0, 1))) ?>
         </span>
         <div class="flex-grow-1 text-break" style="min-width: 0;">
-            <h1 class="fs-3 mb-0"><?= htmlspecialchars($client->getFullname()) ?></h1>
+            <h1 class="fs-3 mb-0">
+                <?= htmlspecialchars($client->getFullname()) ?>
+                <?php if ($client->isArchived()): ?>
+                    <span class="badge text-bg-secondary fs-6 align-middle">Archivé</span>
+                <?php endif; ?>
+            </h1>
             <?php if ($client->getEmail()): ?>
                 <!-- mailto: : ouvre la messagerie de l'appareil avec l'adresse du client ;
                      text-truncate : sur une ligne, « … » si trop longue (le lien garde l'adresse complète) -->
@@ -76,8 +83,23 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                 <?= count($ongoingLoans) ?> prêt<?= count($ongoingLoans) > 1 ? 's' : '' ?> en cours · <?= count($loans) ?> au total
             </p>
         </div>
-        <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#client-form-modal">Modifier</button>
+        <div class="d-flex gap-2 flex-shrink-0">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#client-form-modal">Modifier</button>
+            <!-- Menu « ⋯ » : actions moins fréquentes -->
+            <div class="dropdown">
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Plus d'actions">⋯</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#client-archive-modal"><?= $client->isArchived() ? 'Réactiver le client' : 'Archiver le client' ?></button></li>
+                </ul>
+            </div>
+        </div>
     </div>
+
+    <?php if ($client->isArchived()): ?>
+        <div class="alert alert-secondary">
+            Client archivé le <?= formatDate($client->getArchivedAt()) ?> : il n'est plus proposé pour un prêt ou une vente.
+        </div>
+    <?php endif; ?>
 
     <section class="mb-4" aria-labelledby="client-ongoing-title">
         <h2 class="fs-6 text-uppercase text-muted mb-2" id="client-ongoing-title">Prêts en cours</h2>
@@ -138,8 +160,40 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
     $client_form_mode = 'edit';
     include $_SERVER['DOCUMENT_ROOT'] . '/includes/modals/client-form-modal.php';
     ?>
+
+    <!-- Archiver / réactiver : confirmation, puis api/client/archive-client.php (scripts/client-archive.js) -->
+    <div class="modal fade" id="client-archive-modal" tabindex="-1" aria-labelledby="client-archive-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" novalidate data-role="archive-form" data-client-id="<?= $client->getId() ?>" data-archived="<?= $client->isArchived() ? '0' : '1' ?>">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title fs-6" id="client-archive-modal-label"><?= $client->isArchived() ? 'Réactiver le client' : 'Archiver le client' ?></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div data-role="message" aria-live="polite"></div>
+                    <?php if ($client->isArchived()): ?>
+                        <p class="mb-0"><strong><?= htmlspecialchars($client->getFullname()) ?></strong> sera de nouveau proposé pour les prêts et les ventes.</p>
+                    <?php elseif ($ongoingLoans): ?>
+                        <!-- Même règle que sur le serveur (ClientManager::setArchived) : on prévient avant d'envoyer -->
+                        <p class="mb-0">Ce client a encore <strong><?= count($ongoingLoans) ?> prêt<?= count($ongoingLoans) > 1 ? 's' : '' ?> en cours</strong>.
+                            Enregistrez d'abord le retour du matériel avant de l'archiver.</p>
+                    <?php else: ?>
+                        <p class="mb-2"><strong><?= htmlspecialchars($client->getFullname()) ?></strong> ne sera plus proposé pour les prêts et les ventes.</p>
+                        <p class="mb-0 text-muted">Son historique (prêts, achats, dégâts) est conservé. Vous pourrez le réactiver à tout moment.</p>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <?php if ($client->isArchived() || !$ongoingLoans): ?>
+                        <button type="submit" class="btn btn-primary" data-role="save"><?= $client->isArchived() ? 'Réactiver' : 'Archiver' ?></button>
+                    <?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </div>
 </main>
 
 <?php include $_SERVER['DOCUMENT_ROOT'] . '/includes/app-footer.php'; ?>
+<script src="<?= asset('/scripts/client-archive.js') ?>" defer></script>
 </body>
 </html>

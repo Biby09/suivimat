@@ -1,6 +1,10 @@
 <?php
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/class/client/client.php';
+
+// Levée par ClientManager::setArchived() : on n'archive pas un client qui a encore du matériel
+class ClientHasOngoingLoansException extends Exception {}
+
 class ClientManager{
 
     private PDO $pdo;
@@ -28,9 +32,12 @@ class ClientManager{
         }
     }
 
+    /**
+     * Clients actifs de l'organisation (choix du client d'un prêt ou d'une vente) : les clients archivés ne sont pas renvoyés
+     */
     public function getAllClients(): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM clients WHERE idx_organisation = :organisation ORDER BY cli_lastname, cli_firstname');
+        $stmt = $this->pdo->prepare('SELECT * FROM clients WHERE idx_organisation = :organisation AND cli_archived_at IS NULL ORDER BY cli_lastname, cli_firstname');
         $stmt->execute(['organisation' => $this->organisation->getId()]);
         $clients = [];
 
@@ -82,6 +89,33 @@ class ClientManager{
         $stmt->execute(['firstname' => $firstname, 'lastname' => $lastname, 'email' => $email, 'id' => $client->getId(), 'organisation' => $this->organisation->getId()]);
 
         return $this->getClientById($client->getId());
+    }
+
+    /**
+     * Archive un client ($archived = true) ou le réactive ($archived = false).
+     * Un client qui a encore un prêt en cours ne peut pas être archivé : l'objet doit d'abord être rendu.
+     */
+    public function setArchived(Client $client, bool $archived): Client
+    {
+        if ($archived && $this->countOngoingLoans($client) > 0) {
+            throw new ClientHasOngoingLoansException('Le client a encore un prêt en cours');
+        }
+
+        // NOW() : date et heure actuelles du serveur MySQL ; NULL = client de nouveau actif
+        $stmt = $this->pdo->prepare('UPDATE clients SET cli_archived_at = ' . ($archived ? 'NOW()' : 'NULL') . ' WHERE id_client = :id AND idx_organisation = :organisation');
+        $stmt->execute(['id' => $client->getId(), 'organisation' => $this->organisation->getId()]);
+
+        return $this->getClientById($client->getId());
+    }
+
+    // Nombre de prêts pas encore rendus (sans date de retour) du client
+    private function countOngoingLoans(Client $client): int
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM loans WHERE idx_client = :id AND lo_end_date IS NULL');
+        $stmt->execute(['id' => $client->getId()]);
+
+        // fetchColumn() : valeur de la première colonne de la première ligne (ici le COUNT)
+        return (int) $stmt->fetchColumn();
     }
 
     // $email : optionnel (null = aucun)

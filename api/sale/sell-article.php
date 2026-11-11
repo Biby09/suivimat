@@ -58,6 +58,9 @@ if (!$newClient) {
     } catch (Exception $e) {
         sendError(404, 'Client introuvable');
     }
+    if ($client->isArchived()) {
+        sendError(409, 'Ce client est archivé : réactivez-le depuis sa page pour l\'utiliser');
+    }
 }
 
 $mysqlClient->beginTransaction();

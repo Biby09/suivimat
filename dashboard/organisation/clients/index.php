@@ -7,7 +7,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/class/client/clientManager.php';
     Clients d'une organisation : /dashboard/organisation/clients/?id=… (lien « Clients » du header).
     Pensée mobile d'abord : une ligne par client (initiales, nom, prêts en cours et au total, badge « En retard »).
     - Tri par défaut : nom de famille ; aussi par nombre de prêts en cours.
-    - Filtres : Tous / Avec un prêt en cours / En retard, et recherche par nom (scripts/list-filter.js).
+    - Filtres : Tous / Avec un prêt en cours / En retard / Archivés, et recherche par nom (scripts/list-filter.js).
+      Les clients archivés n'apparaissent que dans le filtre « Archivés » (filtre exclusif, data-exclusive).
     - Clic sur un client : sa page (client.php : modification, prêts en cours, historique).
     - « + Nouveau client » : dialog includes/modals/client-form-modal.php, puis ouverture de la page du nouveau client.
 */
@@ -23,13 +24,21 @@ try {
 
 $rows = (new ClientManager($mysqlClient, $organisation))->getClientsWithLoanCounts();
 
-// Nombre de clients par filtre
-$counts = ['all' => count($rows), 'ongoing' => 0, 'late' => 0];
+// Nombre de clients par filtre (« Tous » : clients actifs seulement)
+$counts = ['all' => 0, 'ongoing' => 0, 'late' => 0, 'archived' => 0];
 foreach ($rows as $row) {
+    if ($row['client']->isArchived()) {
+        $counts['archived']++;
+        continue; // continue : passe directement au client suivant
+    }
+    $counts['all']++;
     $counts['ongoing'] += $row['ongoing'] > 0 ? 1 : 0;
     $counts['late'] += $row['late'] > 0 ? 1 : 0;
 }
 $filters = ['all' => 'Tous', 'ongoing' => 'Avec un prêt en cours', 'late' => 'En retard'];
+if ($counts['archived'] > 0) {
+    $filters['archived'] = 'Archivés'; // pastille affichée seulement s'il y a des clients archivés
+}
 
 // « Jean Exemple » → « JE » (mb_substr : une lettre accentuée compte pour un caractère)
 function initials(Client $client): string
@@ -77,8 +86,8 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
         <!-- Filtres : boutons radio en pastilles, défilables au doigt si l'écran est étroit -->
         <div class="loans-filters d-flex gap-2 overflow-auto pb-2 mb-2" role="radiogroup" aria-label="Filtrer les clients" data-role="filters">
             <?php foreach ($filters as $value => $label): ?>
-                <input type="radio" class="btn-check" name="clients-filter" id="clients-filter-<?= $value ?>" value="<?= $value ?>" autocomplete="off" <?= $value === 'all' ? 'checked' : '' ?>>
-                <label class="btn btn-sm rounded-pill text-nowrap <?= $value === 'late' ? 'btn-outline-danger' : 'btn-outline-primary' ?>" for="clients-filter-<?= $value ?>">
+                <input type="radio" class="btn-check" name="clients-filter" id="clients-filter-<?= $value ?>" value="<?= $value ?>" autocomplete="off" <?= $value === 'all' ? 'checked' : '' ?> <?= $value === 'archived' ? 'data-exclusive' : '' ?>>
+                <label class="btn btn-sm rounded-pill text-nowrap <?= $value === 'late' ? 'btn-outline-danger' : ($value === 'archived' ? 'btn-outline-secondary' : 'btn-outline-primary') ?>" for="clients-filter-<?= $value ?>">
                     <?= $label ?> <span class="badge rounded-pill text-bg-light ms-1"><?= $counts[$value] ?></span>
                 </label>
             <?php endforeach; ?>
@@ -99,14 +108,14 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
             </div>
         </div>
 
-        <p class="small text-muted mb-2" data-role="count" data-one="client" data-many="clients" aria-live="polite"><?= count($rows) ?> client<?= count($rows) > 1 ? 's' : '' ?></p>
+        <p class="small text-muted mb-2" data-role="count" data-one="client" data-many="clients" aria-live="polite"><?= $counts['all'] ?> client<?= $counts['all'] > 1 ? 's' : '' ?></p>
 
         <div class="list-group" data-role="list">
             <?php foreach ($rows as $index => $row): ?>
                 <?php
                 $client = $row['client'];
-                // Catégories pour les filtres : « ongoing » s'il a un prêt en cours, « late » s'il est en retard
-                $categories = trim(($row['ongoing'] > 0 ? 'ongoing ' : '') . ($row['late'] > 0 ? 'late' : ''));
+                // Catégories pour les filtres : « ongoing » s'il a un prêt en cours, « late » s'il est en retard, « archived » s'il est archivé
+                $categories = $client->isArchived() ? 'archived' : trim(($row['ongoing'] > 0 ? 'ongoing ' : '') . ($row['late'] > 0 ? 'late' : ''));
                 ?>
                 <a class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3"
                     href="/dashboard/organisation/clients/client.php?client_id=<?= $client->getId() ?>"
@@ -118,7 +127,9 @@ include_once $_SERVER['DOCUMENT_ROOT'] . '/includes/head.php';
                         <!-- Pas de text-truncate : le résumé passe à la ligne plutôt que d'être coupé à côté du badge « En retard » -->
                         <span class="d-block small text-muted"><?= loansSummary($row) ?></span>
                     </span>
-                    <?php if ($row['late'] > 0): ?>
+                    <?php if ($client->isArchived()): ?>
+                        <span class="badge text-bg-secondary flex-shrink-0">Archivé</span>
+                    <?php elseif ($row['late'] > 0): ?>
                         <span class="badge text-bg-danger flex-shrink-0">En retard</span>
                     <?php endif; ?>
                     <!-- Chevron « › » : indique qu'une page s'ouvre -->

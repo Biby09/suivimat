@@ -12,7 +12,7 @@ Application web de gestion et de suivi du matériel de prêt pour associations e
   - Scanné par une autre personne → page « Vous avez trouvé cet objet ».
 - **Prêts** : enregistrement du départ (avec ou sans délai de retour) et du retour, historique complet par objet.
 - **Dégâts** : description et photos associées à un retour.
-- **Emprunteurs** : ajout / suppression, liste des objets actuellement prêtés.
+- **Emprunteurs** : ajout / archivage, liste des objets actuellement prêtés.
 - **Contrat de prêt** : généré sur le serveur et téléchargeable en PDF.
 - **Scanner** : bouton accessible en permanence en bas au centre de l'application.
 
