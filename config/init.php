@@ -3,7 +3,7 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/config/session.php';
 
 // Initialisation du PDO;
 
-if (($_SERVER['SERVER_NAME'] === 'localhost') || ($_SERVER['SERVER_NAME'] === '192.168.1.101')) {
+if (($_SERVER['SERVER_NAME'] === 'localhost') || ($_SERVER['SERVER_NAME'] === '192.168.1.101' || $_SERVER['SERVER_NAME'] === '10.229.56.118')) {
     $MYSQL_HOST = 'localhost';
     $MYSQL_PORT = 3306;
     $MYSQL_NAME = 'suivimat';
