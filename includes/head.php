@@ -28,6 +28,11 @@ $robots_directive = $robots_directive ?? ($private_path ? 'noindex, nofollow' : 
     <meta name="twitter:title" content="<?= htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="twitter:description" content="<?= htmlspecialchars($page_description, ENT_QUOTES, 'UTF-8') ?>">
 
+    <link rel="apple-touch-icon" sizes="180x180" href="/media/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/media/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/media/favicon/site.webmanifest">
+
     <!-- asset() (config/init.php) : ?v=… change à chaque recompilation du CSS, pas d'ancienne version en cache -->
     <link rel="stylesheet" href="<?= asset('/style/css/style.css') ?>">
     <script src="/style/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js" defer></script>
